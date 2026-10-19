@@ -61,9 +61,9 @@ export default function ProfileTab({ tools, sender, readOnly }) {
   const invalid = Object.values(errors).some(Boolean);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <Card title="Business profile" subtitle="Customers see this when they open your business info in WhatsApp">
-        <fieldset disabled={readOnly} className="grid gap-4 sm:grid-cols-2">
+        <fieldset disabled={readOnly} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input className="sm:col-span-2" label="About (short status)" maxLength={139} value={form.about} onChange={(e) => set({ about: e.target.value })} error={errors.about} hint={`${form.about.length}/139`} />
           <Textarea className="sm:col-span-2" label="Description" rows={3} maxLength={512} showCount value={form.description} onChange={(e) => set({ description: e.target.value })} />
           <Select label="Business category" value={form.vertical} onChange={(e) => set({ vertical: e.target.value })} options={VERTICALS} placeholder="Choose a category" />

@@ -35,7 +35,7 @@ export default function MySendersPage() {
       {q.isError ? (
         <ErrorState error={q.error} onRetry={q.refetch} />
       ) : q.isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
         </div>
       ) : !q.data?.length ? (
@@ -48,7 +48,7 @@ export default function MySendersPage() {
           />
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {q.data.map((s) => (
             <Link key={s.id} to={`/partner/senders/${s.id}`} className="card flex flex-col gap-3 p-4 transition-colors hover:bg-surface-2">
               <div className="flex items-start justify-between gap-2">

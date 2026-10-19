@@ -62,7 +62,7 @@ function UseModal({ template, onClose }) {
         </>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Select className="sm:col-span-2" label="WhatsApp account" value={waba} onChange={(e) => setWaba(e.target.value)} options={wabas.options} />
         <Input label="Template name" value={name} onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))} error={nameOk ? undefined : 'Lowercase letters, numbers and _ only'} />
         <Select label="Language" value={language} onChange={(e) => setLanguage(e.target.value)} options={TEMPLATE_LANGUAGES} />
@@ -103,11 +103,11 @@ export default function TemplateLibraryPage() {
       {q.isError ? (
         <ErrorState error={q.error} onRetry={q.refetch} />
       ) : q.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-72 w-full" />)}</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-72 w-full" />)}</div>
       ) : !list.length ? (
         <div className="card"><EmptyState icon={BookOpen} title="No templates found" text="Try another search word." /></div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map((t) => (
             <div key={`${t.name}-${t.language}`} className="card flex flex-col p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">

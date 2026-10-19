@@ -68,7 +68,7 @@ export default function OptOutsPage() {
     <>
       <PageHeader title="Opt-outs" subtitle="People who asked not to receive marketing messages" />
       <ContactsSubnav />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div>
           <FilterBar>
             <SearchInput value={f.search} onSearch={(v) => update({ search: v })} placeholder="Search number" />

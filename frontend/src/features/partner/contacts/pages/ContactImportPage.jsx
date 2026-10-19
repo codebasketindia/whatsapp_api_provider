@@ -90,7 +90,7 @@ export default function ContactImportPage() {
           <div className="space-y-5">
             <Alert variant="info">We found {formatNumber(preview.rowCount)} rows and {columns.length} columns.</Alert>
             <Card title="Match your columns">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[
                   ['phone', 'WhatsApp number', true],
                   ['name', 'Name', false],

@@ -140,7 +140,7 @@ export default function RatePlanBuilderPage() {
           title="Template message prices (per message, ₹)"
           subtitle="Leave a cell empty to block that category for that country. “All other countries” is used when a country has no row."
         >
-          <div className="-mx-4 overflow-x-auto px-4">
+          <div className="relative -mx-4 overflow-x-auto px-4">
             <table className="min-w-[640px] text-sm">
               <thead>
                 <tr className="text-left text-muted">
@@ -150,7 +150,7 @@ export default function RatePlanBuilderPage() {
                       <span className="inline-flex items-center gap-1">{humanize(c)}{TERM[c] && <InfoTip term={TERM[c]} />}</span>
                     </th>
                   ))}
-                  <th className="sr-only">Remove</th>
+                  <th><span className="sr-only">Remove</span></th>
                 </tr>
               </thead>
               <tbody>

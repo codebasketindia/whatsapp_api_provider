@@ -43,7 +43,7 @@ export default function PartnerDashboardPage() {
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="card overflow-hidden lg:col-span-1">
           <div className="bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white">
             <p className="flex items-center gap-2 text-sm text-white/80">

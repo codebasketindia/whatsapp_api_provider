@@ -84,7 +84,7 @@ export default function MyTemplateDetailPage() {
           </>
         }
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <Card>
             <div className="flex flex-wrap items-center gap-2">

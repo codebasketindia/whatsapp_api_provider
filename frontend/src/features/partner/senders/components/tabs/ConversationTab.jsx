@@ -65,7 +65,7 @@ export default function ConversationTab({ tools, sender, readOnly }) {
       <Card title={<span className="inline-flex items-center gap-1">Commands <InfoTip term="COMMANDS" /></span>} subtitle="Up to 30 commands customers can type after /">
         <div className="space-y-3">
           {form.commands.map((c, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)_auto]">
+            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[180px_minmax(0,1fr)_auto]">
               <Input aria-label="Command" prefix="/" maxLength={32} value={c.name.replace(/^\//, '')} onChange={(e) => set({ commands: form.commands.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} placeholder="help" />
               <Input aria-label="Description" maxLength={256} value={c.description} onChange={(e) => set({ commands: form.commands.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)) })} placeholder="Get help from our team" />
               <IconButton icon={Trash2} label="Remove" variant="danger" onClick={() => set({ commands: form.commands.filter((_, j) => j !== i) })} />

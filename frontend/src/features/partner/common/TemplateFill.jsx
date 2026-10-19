@@ -74,7 +74,7 @@ export default function TemplateFill({ template, senderId, values, onChange }) {
         </div>
       )}
       {inputs.needsLocation && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Latitude" inputMode="decimal" value={values.header?.latitude ?? ''} onChange={(e) => setHeader({ latitude: e.target.value })} required />
           <Input label="Longitude" inputMode="decimal" value={values.header?.longitude ?? ''} onChange={(e) => setHeader({ longitude: e.target.value })} required />
           <Input label="Place name" value={values.header?.name || ''} onChange={(e) => setHeader({ name: e.target.value })} />
@@ -82,7 +82,7 @@ export default function TemplateFill({ template, senderId, values, onChange }) {
         </div>
       )}
       {inputs.bodyVars.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {inputs.bodyVars.map((v) => (
             <Input
               key={v}

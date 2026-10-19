@@ -45,7 +45,7 @@ export default function DateRangePicker({ value = {}, onChange, label, className
         )}
       </div>
       <div className="flex items-center gap-2">
-        <label className="relative flex-1">
+        <label className="relative min-w-0 flex-1">
           <span className="sr-only">From date</span>
           <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <input
@@ -53,11 +53,11 @@ export default function DateRangePicker({ value = {}, onChange, label, className
             value={value.from || ''}
             max={value.to || undefined}
             onChange={(e) => onChange({ ...value, from: e.target.value })}
-            className="field-base pl-9"
+            className="field-base min-w-0 pl-9"
           />
         </label>
         <span className="text-sm text-muted">to</span>
-        <label className="relative flex-1">
+        <label className="relative min-w-0 flex-1">
           <span className="sr-only">To date</span>
           <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <input
@@ -65,7 +65,7 @@ export default function DateRangePicker({ value = {}, onChange, label, className
             value={value.to || ''}
             min={value.from || undefined}
             onChange={(e) => onChange({ ...value, to: e.target.value })}
-            className="field-base pl-9"
+            className="field-base min-w-0 pl-9"
           />
         </label>
       </div>

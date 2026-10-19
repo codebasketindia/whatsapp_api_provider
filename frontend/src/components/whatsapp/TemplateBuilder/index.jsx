@@ -172,10 +172,10 @@ export default function TemplateBuilder({
       : bodyVars.map((v) => state.bodyExamples?.[v]);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-5">
         <Card title="Basics">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {wabaOptions.length > 1 || !lockIdentity ? (
               <Select
                 label="WhatsApp account"
@@ -338,7 +338,7 @@ export default function TemplateBuilder({
               {bodyVars.length > 0 && (
                 <div>
                   <p className="label-base">Sample values (Meta uses these to review)</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {bodyVars.map((v) => (
                       <Input
                         key={v}
@@ -393,7 +393,7 @@ export default function TemplateBuilder({
                     </span>
                     {!auth && <IconButton icon={Trash2} label="Remove button" variant="danger" size="sm" onClick={() => removeButton(i)} />}
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {b.type === 'OTP' ? (
                       <>
                         <Select

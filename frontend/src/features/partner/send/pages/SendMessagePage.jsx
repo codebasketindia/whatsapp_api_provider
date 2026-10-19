@@ -123,10 +123,10 @@ export default function SendMessagePage() {
           It will be delivered in a few seconds. <Link className="font-medium underline" to={`/partner/reports?search=${sent.uid}`}>Track this message</Link>
         </Alert>
       )}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <Card title="1. From and to">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <SenderSelect value={senderId} onChange={setSenderId} />
               <PhoneInput label="Customer WhatsApp number" value={to} onChange={setTo} error={to && !validTo ? 'Enter a valid number' : undefined} required />
             </div>

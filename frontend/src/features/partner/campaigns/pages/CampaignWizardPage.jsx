@@ -231,12 +231,12 @@ export default function CampaignWizardPage() {
     <>
       <PageHeader title="New campaign" subtitle="Send an approved template to many people" backTo="/partner/campaigns" backLabel="Campaigns" />
       <Stepper steps={STEPS} current={step} className="mb-6" />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
           {step === 0 && (
             <>
               <Card title="Campaign details">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Input className="sm:col-span-2" label="Campaign name" maxLength={150} value={name} onChange={(e) => setName(e.target.value)} placeholder="Diwali offer 2026" required />
                   <SenderSelect value={senderId} onChange={(v) => { setSenderId(v); setTemplateId(''); }} />
                   {templates.isLoading && sender ? (
@@ -302,7 +302,7 @@ export default function CampaignWizardPage() {
             <>
               {audienceType === 'FILE' && (
                 <Card title="Phone numbers">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Select label="Column with WhatsApp numbers" value={phoneColumn} onChange={(e) => setPhoneColumn(e.target.value)} options={columns.map((c) => ({ value: c, label: c }))} placeholder="Choose column" required />
                     <Select
                       label="Numbers without country code are from"
@@ -346,7 +346,7 @@ export default function CampaignWizardPage() {
               )}
               {inputs.needsLocation && (
                 <Card title="Header location">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Input label="Latitude" inputMode="decimal" value={headerMedia?.latitude ?? ''} onChange={(e) => setHeaderMedia({ ...(headerMedia || {}), type: 'location', latitude: e.target.value })} />
                     <Input label="Longitude" inputMode="decimal" value={headerMedia?.longitude ?? ''} onChange={(e) => setHeaderMedia({ ...(headerMedia || {}), type: 'location', longitude: e.target.value })} />
                     <Input label="Place name" value={headerMedia?.name || ''} onChange={(e) => setHeaderMedia({ ...(headerMedia || {}), type: 'location', name: e.target.value })} />

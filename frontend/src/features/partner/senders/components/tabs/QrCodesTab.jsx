@@ -70,7 +70,7 @@ export default function QrCodesTab({ tools, sender, readOnly }) {
           <EmptyState icon={QrCode} title="No QR codes yet" text="Print a QR code on your shop counter, bill or website." action={!readOnly && <Button onClick={() => setEdit({ prefilledMessage: '' })}>Create QR code</Button>} />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {q.data.map((c) => (
             <div key={c.id} className="card flex flex-col gap-4 p-4 sm:flex-row">
               <QrImage tools={tools} senderId={sender.id} qrId={c.id} />

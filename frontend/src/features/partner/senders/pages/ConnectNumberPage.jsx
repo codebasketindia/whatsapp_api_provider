@@ -107,7 +107,7 @@ export default function ConnectNumberPage() {
         )}
         {step === 1 && (
           <Card title="Create a 6-digit security PIN" subtitle="WhatsApp asks for this PIN if the number is ever registered again. Keep it safe.">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input label="PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} error={pin && !/^\d{6}$/.test(pin) ? 'PIN must be 6 digits' : undefined} />
               <Input label="Repeat PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} error={pin2 && pin2 !== pin ? 'PINs do not match' : undefined} />
             </div>
@@ -158,7 +158,7 @@ export default function ConnectNumberPage() {
             <Card title="What to do next">
               <Checklist checklist={result.checklist} />
             </Card>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button variant="secondary" onClick={() => navigate(`/partner/senders/${result.sender?.id}`)}>Open number details</Button>
               <Button to="/partner/templates/new">Create a template</Button>
             </div>

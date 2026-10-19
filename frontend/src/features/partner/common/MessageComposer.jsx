@@ -90,7 +90,7 @@ export default function MessageComposer({ senderId, value, onChange, compact }) 
         </>
       )}
       {value.kind === 'buttons' && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {value.buttons.map((b, i) => (
             <Input
               key={i}
@@ -103,7 +103,7 @@ export default function MessageComposer({ senderId, value, onChange, compact }) 
         </div>
       )}
       {value.kind === 'link' && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Button text" maxLength={20} value={value.ctaText} onChange={(e) => set({ ctaText: e.target.value })} />
           <Input label="Website link" placeholder="https://example.com" value={value.ctaUrl} onChange={(e) => set({ ctaUrl: e.target.value })} />
         </div>

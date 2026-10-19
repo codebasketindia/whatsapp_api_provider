@@ -18,7 +18,7 @@ export default function InboxPage() {
   return (
     <>
       <PageHeader title="Inbox" subtitle="Chats with your customers" actions={<LiveBadge live={live} />} />
-      <div className="card grid h-[calc(100dvh-13rem)] min-h-[420px] overflow-hidden md:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="card grid grid-cols-1 h-[calc(100dvh-13rem)] min-h-[420px] overflow-hidden md:grid-cols-[340px_minmax(0,1fr)]">
         <ConversationList live={live} className="md:border-r md:border-line" />
         {desktop && (
           <div className="wa-wallpaper flex items-center justify-center">

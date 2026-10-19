@@ -172,7 +172,7 @@ function Usage() {
   return (
     <div className="space-y-5">
       <Card>
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
           <DateRangePicker value={range} onChange={setRange} />
           <Select label="Group" value={groupBy} onChange={(e) => setGroupBy(e.target.value)} options={GROUP_BY} />
         </div>

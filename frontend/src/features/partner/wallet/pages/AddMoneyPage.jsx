@@ -155,7 +155,7 @@ function PacksOption({ config }) {
   const b = pack ? calcTopup({ pack, gstEnabled: config.gstEnabled, gstPercent: config.gstPercent }) : null;
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {q.data.map((p) => (
           <button
             key={p.id}
@@ -224,7 +224,7 @@ function ManualOption() {
   const mode = watch('paymentMode');
   return (
     <Card title="I already paid" subtitle="Paid us by bank transfer, UPI or cash? Send the details and we will add it to your wallet.">
-      <form onSubmit={handleSubmit((v) => m.mutate(v))} className="grid gap-4 sm:grid-cols-2" noValidate>
+      <form onSubmit={handleSubmit((v) => m.mutate(v))} className="grid grid-cols-1 gap-4 sm:grid-cols-2" noValidate>
         <Input label="Amount paid" prefix="₹" inputMode="decimal" required {...register('amount')} error={errors.amount} />
         <Select label="Paid by" options={PAYMENT_MODES} required {...register('paymentMode')} error={errors.paymentMode} />
         <Input
