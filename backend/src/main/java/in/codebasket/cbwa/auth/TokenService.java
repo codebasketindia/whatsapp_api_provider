@@ -70,6 +70,6 @@ public class TokenService {
     public static AuthPrincipal principalOf(User user, Partner partner, Long impersonatorUserId) {
         return new AuthPrincipal(user.getId(), user.getUid(), user.getEmail(), user.getName(), user.getUserType(),
                 partner == null ? null : partner.getId(), user.isSuperAdmin(), new HashSet<>(UserMapper.permissionsOf(user)),
-                impersonatorUserId, null, user.isMustChangePassword());
+                impersonatorUserId, null, impersonatorUserId == null && user.isMustChangePassword());
     }
 }

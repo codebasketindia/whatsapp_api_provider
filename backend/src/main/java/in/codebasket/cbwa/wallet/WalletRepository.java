@@ -2,6 +2,8 @@ package in.codebasket.cbwa.wallet;
 
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -21,4 +23,6 @@ public interface WalletRepository extends JpaRepository<Wallet, Long> {
 
     @Query("select coalesce(sum(w.heldAmount), 0) from Wallet w")
     BigDecimal totalHeld();
+
+    List<Wallet> findByPartnerIdIn(Collection<Long> partnerIds);
 }
