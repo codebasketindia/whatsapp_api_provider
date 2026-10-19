@@ -59,6 +59,36 @@ public class MetaGraphClient {
         return exchange(HttpMethod.DELETE, path, query, null, token);
     }
 
+    /** DELETE with a JSON body (e.g. unblocking users). */
+    public JsonNode deleteWithBody(String path, Object jsonBody, String token) {
+        return exchange(HttpMethod.DELETE, path, null, jsonBody, token);
+    }
+
+    /** GET of an absolute URL (Graph paging "next" links already carry the query string). */
+    public JsonNode getAbsolute(String url, String token) {
+        try {
+            String body = webClient.get().uri(URI.create(url))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .retrieve().bodyToMono(String.class).block(TIMEOUT);
+            return JsonUtil.readTree(body);
+        } catch (WebClientResponseException e) {
+            throw toMetaException(e);
+        } catch (WebClientRequestException e) {
+            throw network(e);
+        }
+    }
+
+    /** Downloads any public URL (e.g. a Meta-hosted QR image) without auth. */
+    public byte[] downloadPublic(String url) {
+        try {
+            return webClient.get().uri(URI.create(url)).retrieve().bodyToMono(byte[].class).block(Duration.ofSeconds(30));
+        } catch (WebClientResponseException e) {
+            throw toMetaException(e);
+        } catch (WebClientRequestException e) {
+            throw network(e);
+        }
+    }
+
     /** POST /{PHONE_NUMBER_ID}/media (multipart) -> media id. */
     public String uploadMedia(String phoneNumberId, byte[] bytes, String mimeType, String filename, String token) {
         MultipartBodyBuilder mb = new MultipartBodyBuilder();
