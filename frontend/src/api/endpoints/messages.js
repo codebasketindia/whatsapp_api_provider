@@ -23,7 +23,8 @@ export const replyToConversation = (senderId, waId, body) =>
 export const markConversationRead = (senderId, waId, typing = false) =>
   api.post(`/partner/inbox/conversations/${senderId}/${waId}/read`, { typing }).then(unwrap);
 export const getInboxStreamTicket = () => api.post('/partner/inbox/stream-ticket').then(unwrap);
-export const inboxStreamPath = '/partner/inbox/stream';
+// IN5: EventSource cannot send Authorization headers, so the stream lives on a public path and uses the IN6 ticket.
+export const inboxStreamPath = '/public/inbox-stream';
 
 // Admin ML1–ML3
 export const listMessages = (params) => api.get('/admin/messages', { params: cleanParams(params) }).then(unwrap);

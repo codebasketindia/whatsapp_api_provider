@@ -1,4 +1,4 @@
-import { api, cleanParams, unwrap } from '../axios';
+import { api, cleanParams, downloadFile, unwrap } from '../axios';
 
 // D1–D12
 export const listApiKeys = () => api.get('/partner/api-keys').then(unwrap);
@@ -13,3 +13,6 @@ export const testWebhook = (eventType) => api.post('/partner/webhook/test', { ev
 export const listWebhookLogs = (params) => api.get('/partner/webhook/logs', { params: cleanParams(params) }).then(unwrap);
 export const retryWebhookLog = (id) => api.post(`/partner/webhook/logs/${id}/retry`).then(unwrap);
 export const getDeveloperInfo = () => api.get('/partner/developer/info').then(unwrap);
+// Postman v2.1 collection for the public API (addition to D12).
+export const downloadPostmanCollection = () =>
+  downloadFile('/partner/developer/postman', undefined, 'cb-whatsapp-gateway.postman_collection.json');
