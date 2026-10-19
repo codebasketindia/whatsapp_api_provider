@@ -178,7 +178,7 @@ public class OutboundMessageServiceImpl implements OutboundMessageService {
         windowRepository.save(w);
     }
 
-    static String normaliseTo(String raw) {
+    public static String normaliseTo(String raw) {
         return PhoneUtil.parse(raw, "IN").map(PhoneUtil.Parsed::digits)
                 .orElseThrow(() -> new AppException(ErrorCode.RECIPIENT_INVALID, "The phone number '" + raw + "' is not valid"));
     }
