@@ -25,3 +25,9 @@ export const rejectTemplate = (id, reason) => api.post(`/admin/templates/${id}/r
 export const createPlatformTemplate = (body) => api.post('/admin/templates', body).then(unwrap);
 export const syncTemplatesAdmin = (wabaDbId) => api.post('/admin/templates/sync', { wabaDbId }).then(unwrap);
 export const deleteTemplateAdmin = (id) => api.delete(`/admin/templates/${id}`).then(unwrap);
+
+/** Header media sample upload for admin-created platform templates (same contract as TP11, admin scope). */
+export const uploadTemplateHeaderAdmin = (wabaDbId, file) =>
+  api
+    .post('/admin/media/template-header', toFormData({ file, wabaDbId }), { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then(unwrap);
