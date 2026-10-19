@@ -1,0 +1,17 @@
+cbwa:
+  dev-mode: true
+  jobs:
+    enabled: false
+  storage:
+    path: ${java.io.tmpdir}/cbwa-test-storage
+  security:
+    jwt-secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLWNid2EtaW50ZWdyYXRpb24tdGVzdHMtNjQtYnl0ZXMtbWluaW11bSE=
+    encryption-key: dGVzdC1vbmx5LWVuY3J5cHRpb24ta2V5LTMyYnl0ZSE=
+    api-secret-pepper: dGVzdC1vbmx5LXBlcHBlcg==
+  seed:
+    admin-email: admin@test.local
+    admin-password: Admin@12345
+logging:
+  level:
+    in.codebasket.cbwa: INFO
+    org.hibernate.SQL: WARN
