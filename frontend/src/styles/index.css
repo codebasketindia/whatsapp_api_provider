@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --canvas: 243 245 247;
+    --surface: 255 255 255;
+    --surface-2: 248 250 251;
+    --line: 226 230 234;
+    --ink: 17 24 39;
+    --muted: 100 112 128;
+    color-scheme: light;
+  }
+  .dark {
+    --canvas: 11 16 20;
+    --surface: 21 28 34;
+    --surface-2: 28 37 44;
+    --line: 45 56 66;
+    --ink: 233 237 240;
+    --muted: 145 157 170;
+    color-scheme: dark;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas text-ink antialiased font-sans;
+    min-height: 100dvh;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-surface;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-xl shadow-card;
+  }
+  .field-base {
+    @apply block w-full min-h-tap rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted
+      focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .field-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
+  }
+  .label-base {
+    @apply mb-1 block text-sm font-medium text-ink;
+  }
+  .wa-wallpaper {
+    background-color: #efeae2;
+    background-image: radial-gradient(rgb(0 0 0 / 0.035) 1px, transparent 1px);
+    background-size: 14px 14px;
+  }
+  .dark .wa-wallpaper {
+    background-color: #0b141a;
+    background-image: radial-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,11 @@
+# Production profile: every secret MUST come from /etc/cbwa/cbwa.env (systemd EnvironmentFile).
+cbwa:
+  dev-mode: false
+springdoc:
+  api-docs:
+    enabled: ${CBWA_SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${CBWA_SWAGGER_ENABLED:false}
+logging:
+  level:
+    root: ${CBWA_LOG_LEVEL:INFO}
