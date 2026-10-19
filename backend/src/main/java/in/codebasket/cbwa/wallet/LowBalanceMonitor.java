@@ -50,19 +50,18 @@ public class LowBalanceMonitor {
             return;
         }
         boolean low = after.compareTo(threshold) < 0;
+        // Atomic UPDATEs (not entity saves): concurrent wallet changes would otherwise hit optimistic-lock
+        // conflicts on partner_settings because InnoDB repeatable-read snapshots may be older than the row.
         if (!low) {
             if (ps.getLowBalanceAlertedAt() != null) {
-                ps.setLowBalanceAlertedAt(null);
-                settingsRepository.save(ps);
+                settingsRepository.clearLowBalanceAlert(partnerId);
             }
             return;
         }
-        Instant last = ps.getLowBalanceAlertedAt();
-        if (last != null && last.isAfter(Instant.now().minus(Duration.ofHours(24)))) {
+        Instant now = Instant.now();
+        if (settingsRepository.markLowBalanceAlerted(partnerId, now, now.minus(Duration.ofHours(24))) == 0) {
             return;
         }
-        ps.setLowBalanceAlertedAt(Instant.now());
-        settingsRepository.save(ps);
         Partner partner = partnerRepository.findById(partnerId).orElse(null);
         String body = "Your wallet balance is ₹" + MoneyUtil.rupees(after).toPlainString() + ", below your alert level of ₹"
                 + MoneyUtil.rupees(threshold).toPlainString() + ". Add money to keep your messages flowing.";

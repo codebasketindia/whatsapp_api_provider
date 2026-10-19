@@ -22,4 +22,6 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Optional<PaymentOrder> lockById(@Param("id") Long id);
 
     List<PaymentOrder> findTop200ByStatusInAndCreatedAtBeforeOrderByIdAsc(List<PaymentOrderStatus> statuses, Instant before);
+
+    long countByCreditPackId(Long creditPackId);
 }
