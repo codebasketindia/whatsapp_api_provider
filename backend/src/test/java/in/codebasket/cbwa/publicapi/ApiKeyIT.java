@@ -37,7 +37,7 @@ class ApiKeyIT extends AbstractIntegrationTest {
 
         // valid key: authenticated, there is no controller yet -> 404 (not 401)
         mockMvc.perform(get("/api/v1/public/senders").header("X-API-KEY", key).header("X-API-SECRET", secret))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/public/senders").header("X-API-KEY", key).header("X-API-SECRET", "cbs_wrong"))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("API_KEY_INVALID"));
     }
@@ -64,7 +64,7 @@ class ApiKeyIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/public/wallet/balance").header("X-API-KEY", key).header("X-API-SECRET", oldSecret))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/public/wallet/balance").header("X-API-KEY", key).header("X-API-SECRET", newSecret))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
 
         // disabling the key blocks it
         mockMvc.perform(patch("/api/partner/api-keys/" + id).header("Authorization", TestData.bearer(token))

@@ -68,7 +68,8 @@ public class WalletQueryService {
 
     @Transactional
     public WalletDto updateThreshold(Long partnerId, BigDecimal threshold) {
-        if (threshold == null || threshold.signum() < 0) {
+        // null = "use the admin default threshold"
+        if (threshold != null && threshold.signum() < 0) {
             throw AppException.field("threshold", "Must be zero or more");
         }
         PartnerSettings ps = partnerSettingsRepository.findById(partnerId).orElseGet(() -> {
@@ -76,7 +77,7 @@ public class WalletQueryService {
             n.setPartnerId(partnerId);
             return n;
         });
-        ps.setLowBalanceThreshold(MoneyUtil.scale(threshold));
+        ps.setLowBalanceThreshold(threshold == null ? null : MoneyUtil.scale(threshold));
         ps.setLowBalanceAlertedAt(null);
         partnerSettingsRepository.save(ps);
         return wallet(partnerId);

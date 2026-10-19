@@ -209,7 +209,7 @@ public class CampaignService {
         if (m != null) {
             mapping.put("phone", m.phone());
             mapping.put("name", m.name());
-            mapping.put("variables", m.variables() == null ? Map.of() : m.variables());
+            mapping.put("variables", normaliseVariableKeys(m.variables()));
         } else {
             mapping.put("variables", Map.of());
         }
@@ -626,5 +626,26 @@ public class CampaignService {
 
     private static JsonNode json(String s) {
         return s == null ? null : JsonUtil.readTree(s);
+    }
+
+    /**
+     * Accepts both key styles for header/button variables: "header" or "header.<var>" and
+     * "button_<index>" or "button.<index>" (the dashboard sends the dotted form).
+     */
+    static Map<String, String> normaliseVariableKeys(Map<String, String> vars) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (vars == null) {
+            return out;
+        }
+        vars.forEach((k, v) -> {
+            String key = k;
+            if (k.startsWith("header.")) {
+                key = "header";
+            } else if (k.startsWith("button.")) {
+                key = "button_" + k.substring("button.".length());
+            }
+            out.put(key, v);
+        });
+        return out;
     }
 }

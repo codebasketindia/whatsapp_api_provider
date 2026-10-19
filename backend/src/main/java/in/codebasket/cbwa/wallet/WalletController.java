@@ -46,7 +46,7 @@ public class WalletController {
                                 @NotBlank @Size(min = 5, max = 500, message = "Please write a remark (5-500 characters)") String remarks) {
     }
 
-    public record ThresholdRequest(@NotNull @DecimalMin("0") @DecimalMax("10000000") BigDecimal threshold) {
+    public record ThresholdRequest(@DecimalMin("0") @DecimalMax("10000000") BigDecimal threshold) {
     }
 
     // ---------------- admin
