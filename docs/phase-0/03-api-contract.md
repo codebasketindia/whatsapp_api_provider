@@ -443,3 +443,32 @@ Events: `message.status`, `message.inbound` (`{from, senderId, type, text|media{
 
 ## Changelog
 - v1.0 (Phase 0) — initial contract.
+- v1.1 (Phases 1–11, announced by [LEAD ARCHITECT]) — additive changes and clarifications implemented:
+  - A10 change-password returns `TokenDto` (all other sessions are revoked). While `mustChangePassword` is true every
+    API except `/me`, `/me/change-password`, `/auth/logout`, `/me/notifications/unread-count` returns 403
+    `AUTH_PASSWORD_CHANGE_REQUIRED`. A1 2FA step returns `success:true, code:"AUTH_2FA_REQUIRED"`.
+  - Money is serialised as strings everywhere (`"1000.0000"`); settings numbers are JSON numbers.
+  - ST6 adds `GET /api/public/branding/logo`. Settings groups also include `storage` and `retention`.
+  - IN5 moved to `GET /api/public/inbox-stream?ticket=...` (EventSource cannot send Authorization headers; the IN6
+    ticket is valid 60 s). IN2 adds `windowOpen`, `windowExpiresAt`.
+  - MessageDto adds `waId`, `pricingCategory`, `media{url,mimeType,filename,caption,downloadStatus}`, `partner`
+    (admin). CostEstimateDto adds `invalid`; MS1 also accepts `templateName`/`templateLanguage`.
+  - Immediate Meta rejection writes a RELEASE ledger row and `chargeStatus=NONE`; FAILED while held → REFUND.
+  - P3 returns PartnerDto plus `settings{...}` and `stats`; P14 rows add `label`, `total`; W6 adds `walletTransaction`;
+    TopupRequestDto adds `screenshotMimeType`, `invoice`; PG2 adds `companyName`, `description`; PG10 adds
+    `partner`, `logs[]`; InvoiceDto adds `paymentOrderId`, `topupRequestId`; ST5 adds `gateway`, `webhookUrl`,
+    `activeAndConfigured`. W2/W14 `includeMessageEntries=false` hides all MESSAGE/CAMPAIGN rows.
+  - W17: screenshot required unless mode CASH; CASH without UTR stored as `CASH-<requestNo>`.
+  - E4 returns 403 `OWN_NUMBER_NOT_ALLOWED` when not allowed. M12 returns `{sender, checklist, steps}`.
+    T20/T21 return `{blocked, unblocked, failed}`. TP2/TP7 accept `senderId` instead of `wabaDbId`; TP16 accepts
+    `partnerId`, `submit`. Added: `GET/PUT /api/admin/templates/{id}`, `GET /api/admin/templates/{id}/analytics`,
+    `POST /api/admin/media/template-header`, `GET /api/partner/contact-groups/{id}`, `GET /api/admin/campaigns/{id}`.
+    `allow_category_change` is not sent to Meta (deprecated); category changes arrive via `template_category_update`.
+  - Campaign counters are cumulative (`sent` = sent+delivered+read; `delivered` = delivered+read); CP4 counts add
+    `missingVariables`; mapping supports `header`, `button_<index>`, `{{attribute}}`, `=static`, `name`.
+    A campaign paused by an admin cannot be resumed by the partner.
+  - D5 deletes unused keys, disables keys referenced by messages. Added `GET /api/partner/developer/postman`.
+    DB1 adds `walletHeld`. Revenue = finalized message charges + platform fees − refunds of finalized charges.
+  - PU1 accepts `from`, `senderId` or neither (default sender); returns `{id, status, price, to, clientReference}`.
+    PU2 recipients accept `bodyVariables` (positional) or `variables` (named) and `clientReference`.
+    `Idempotency-Key` honoured for 24 h on PU1.
