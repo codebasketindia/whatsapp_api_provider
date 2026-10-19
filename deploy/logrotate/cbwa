@@ -1,0 +1,11 @@
+# The app rotates its own JSON logs (logback, 30 days / 5 GB cap).
+# This rotates the backup/healthcheck logs and any stdout capture.
+/var/log/cbwa/backup.log /var/log/cbwa/healthcheck.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
