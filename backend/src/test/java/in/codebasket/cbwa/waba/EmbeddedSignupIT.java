@@ -120,6 +120,9 @@ class EmbeddedSignupIT extends MetaTestBase {
         mockMvc.perform(post("/api/partner/embedded-signup/complete").header("Authorization", TestData.bearer(testData.accessToken(p)))
                         .contentType(MediaType.APPLICATION_JSON).content(body("good-code")))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("OWN_NUMBER_NOT_ALLOWED"));
+        mockMvc.perform(get("/api/partner/embedded-signup/config").header("Authorization", TestData.bearer(testData.accessToken(p))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.allowed").value(false))
+                .andExpect(jsonPath("$.data.reason").isNotEmpty());
     }
 
     @Test

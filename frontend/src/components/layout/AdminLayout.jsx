@@ -105,7 +105,7 @@ export default function AdminLayout() {
         </div>
       )}
 
-      <div className={cn('flex min-h-[100dvh] flex-col transition-[padding]', collapsed ? 'md:pl-[72px]' : 'md:pl-64')}>
+      <div className={cn('flex min-h-[100dvh] min-w-0 flex-col transition-[padding]', collapsed ? 'md:pl-[72px]' : 'md:pl-64')}>
         <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-line bg-surface/95 px-2 backdrop-blur sm:px-4">
           <button type="button" onClick={() => setMobileOpen(true)} className="flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-surface-2 md:hidden" aria-label="Open menu">
             <Menu className="h-5 w-5" />
@@ -120,7 +120,7 @@ export default function AdminLayout() {
             <ProfileMenu profilePath="/admin/profile" />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 sm:px-6 lg:py-8">
+        <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-5 sm:px-6 lg:py-8">
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

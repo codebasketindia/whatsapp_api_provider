@@ -47,6 +47,12 @@ public class GlobalExceptionHandler {
         return build(code, ex.friendlyMessage(), data, null);
     }
 
+    @ExceptionHandler(in.codebasket.cbwa.common.crypto.SecretUnreadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleSecret(in.codebasket.cbwa.common.crypto.SecretUnreadableException ex) {
+        log.error("Stored secret cannot be decrypted: {}", ex.getMessage());
+        return build(ErrorCode.CONFLICT, "A saved key or token can't be read. Please enter it again (or reconnect the number)", null, null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Object>> handleValidation(MethodArgumentNotValidException ex) {
         List<FieldErrorDto> errors = ex.getBindingResult().getFieldErrors().stream()

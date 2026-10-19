@@ -61,7 +61,7 @@ public class CryptoService {
             return null;
         }
         if (!enc.startsWith(PREFIX)) {
-            throw new IllegalStateException("Unknown encrypted value format");
+            throw new SecretUnreadableException("Unknown encrypted value format", null);
         }
         try {
             byte[] all = Base64.getDecoder().decode(enc.substring(PREFIX.length()));
@@ -69,8 +69,8 @@ public class CryptoService {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, all, 0, IV_LENGTH));
             byte[] pt = cipher.doFinal(all, IV_LENGTH, all.length - IV_LENGTH);
             return new String(pt, StandardCharsets.UTF_8);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Decryption failed - wrong CBWA_ENCRYPTION_KEY?", e);
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+            throw new SecretUnreadableException("Decryption failed - wrong CBWA_ENCRYPTION_KEY or corrupted value", e);
         }
     }
 }

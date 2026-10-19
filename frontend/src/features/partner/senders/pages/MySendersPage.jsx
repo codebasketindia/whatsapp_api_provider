@@ -13,7 +13,7 @@ export default function MySendersPage() {
   const reason = cfg.isError
     ? 'Connecting your own number is not available right now.'
     : cfg.isSuccess && !cfg.data?.allowed
-      ? 'Connecting your own number is not turned on for your account. Contact support to enable it.'
+      ? cfg.data?.reason || 'Connecting your own number is not turned on for your account. Contact support to enable it.'
       : null;
 
   return (

@@ -37,7 +37,7 @@ export default function PartnerLayout() {
         </div>
       </aside>
 
-      <div className="flex min-h-[100dvh] flex-col md:pl-64">
+      <div className="flex min-h-[100dvh] min-w-0 flex-col md:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur sm:px-4">
           <div className="md:hidden">
             <Logo to="/partner" />
@@ -49,7 +49,7 @@ export default function PartnerLayout() {
           </div>
         </header>
         <LowBalanceBanner />
-        <main className={cn('mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 lg:py-8', !inChat && 'pb-28 md:pb-8')}>
+        <main className={cn('mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-5 sm:px-6 lg:py-8', !inChat && 'pb-28 md:pb-8')}>
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

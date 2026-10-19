@@ -66,7 +66,13 @@ public final class SenderDtos {
     }
 
     public record EmbeddedSignupConfigDto(boolean allowed, String appId, String configId, String graphApiVersion,
-                                          String solutionId, List<String> featureTypes, Map<String, Object> extras) {
+                                          String solutionId, List<String> featureTypes, Map<String, Object> extras,
+                                          String reason) {
+
+        /** "Connect own number" is not available for this partner; reason is shown to the user. */
+        public static EmbeddedSignupConfigDto notAllowed(String reason) {
+            return new EmbeddedSignupConfigDto(false, null, null, null, null, List.of(), Map.of(), reason);
+        }
     }
 
     public record CompleteSignupRequest(@NotBlank @Size(max = 1024) String code,

@@ -56,7 +56,7 @@ export default function DataTable({
   return (
     <div className={className}>
       {isDesktop ? (
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <div className="relative overflow-x-auto rounded-xl border border-line bg-surface">
           <table className="min-w-full divide-y divide-line text-sm">
             <thead className="bg-surface-2">
               <tr>

@@ -41,10 +41,13 @@ public class EmbeddedSignupService {
     /** E4 */
     @Transactional(readOnly = true)
     public EmbeddedSignupConfigDto config(Long partnerId) {
-        requireAllowed(partnerId);
+        Partner partner = partnerRepository.findById(partnerId).orElseThrow(() -> AppException.notFound("Partner"));
+        if (!partner.isAllowOwnNumber()) {
+            return EmbeddedSignupConfigDto.notAllowed(ErrorCode.OWN_NUMBER_NOT_ALLOWED.getDefaultMessage());
+        }
         MetaSettings m = metaSettings.get();
         if (m.getAppId() == null || m.getEmbeddedSignupConfigId() == null) {
-            throw new AppException(ErrorCode.META_NOT_CONFIGURED, "Connecting your own number is not set up yet. Please contact support");
+            return EmbeddedSignupConfigDto.notAllowed("Connecting your own number is not set up yet. Please contact support");
         }
         Map<String, Object> extras = new LinkedHashMap<>();
         extras.put("setup", Map.of());
@@ -53,7 +56,7 @@ public class EmbeddedSignupService {
             extras.put("setup", Map.of("solutionID", m.getSolutionId()));
         }
         return new EmbeddedSignupConfigDto(true, m.getAppId(), m.getEmbeddedSignupConfigId(), m.getGraphApiVersion(),
-                m.getSolutionId(), List.of("", "whatsapp_business_app_onboarding"), extras);
+                m.getSolutionId(), List.of("", "whatsapp_business_app_onboarding"), extras, null);
     }
 
     /** E5: the code is valid for ~30 seconds, so it is exchanged before anything else. */
