@@ -8,7 +8,7 @@ dist/
 .vscode/
 *.iml
 *.log
-storage/
-logs/
+/storage/
+/logs/
 backend/storage/
 .env.production.local
