@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Please fix the highlighted fields"),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "The request is not valid"),
-    AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email or password is incorrect"),
+    AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Mobile number or password is incorrect"),
     AUTH_ACCOUNT_LOCKED(HttpStatus.LOCKED, "Too many failed attempts. Please try again later"),
     AUTH_ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "Your account is disabled. Please contact support"),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Your session has expired"),

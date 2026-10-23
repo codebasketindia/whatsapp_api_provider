@@ -25,6 +25,7 @@ public class MeService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+    private final MobileNumbers mobileNumbers;
 
     @Transactional(readOnly = true)
     public UserDto me() {
@@ -39,7 +40,7 @@ public class MeService {
     public UserDto update(UpdateProfileRequest req) {
         User user = currentUser(SecurityUtils.current());
         user.setName(req.name().trim());
-        user.setMobile(req.mobile() == null || req.mobile().isBlank() ? null : req.mobile().trim());
+        user.setMobile(mobileNumbers.requireUnique(req.mobile(), user.getId(), "mobile"));
         if (req.theme() != null) {
             user.setTheme(req.theme());
         }

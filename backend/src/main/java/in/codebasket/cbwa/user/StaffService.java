@@ -47,6 +47,7 @@ public class StaffService {
     private final AuditService auditService;
     private final MailService mailService;
     private final AppProperties props;
+    private final MobileNumbers mobileNumbers;
 
     @Transactional(readOnly = true)
     public List<PermissionDto> permissions() {
@@ -139,7 +140,7 @@ public class StaffService {
         u.setRole(role);
         u.setName(req.name().trim());
         u.setEmail(req.email().trim().toLowerCase());
-        u.setMobile(blankToNull(req.mobile()));
+        u.setMobile(mobileNumbers.requireUnique(req.mobile(), null, "mobile"));
         u.setPasswordHash(passwordEncoder.encode(password));
         u.setStatus(UserStatus.ACTIVE);
         u.setMustChangePassword(true);
@@ -162,7 +163,7 @@ public class StaffService {
             throw AppException.conflict("At least one active super admin is required");
         }
         u.setName(req.name().trim());
-        u.setMobile(blankToNull(req.mobile()));
+        u.setMobile(mobileNumbers.requireUnique(req.mobile(), u.getId(), "mobile"));
         u.setRole(role);
         userRepository.save(u);
         refreshTokenRepository.revokeAllForUser(u.getId(), Instant.now());
@@ -249,9 +250,5 @@ public class StaffService {
         return new RoleDto(r.getId(), r.getCode(), r.getName(), r.getDescription(), r.isSystem(), r.getUserType().name(),
                 r.getPermissions().stream().map(Permission::getCode).sorted().toList(),
                 r.getId() == null ? 0 : userRepository.countByRoleId(r.getId()));
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 }

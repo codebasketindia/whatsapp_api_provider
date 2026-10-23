@@ -43,6 +43,7 @@ public class AppProperties {
 
     @Getter @Setter
     public static class Seed {
+        private String adminMobile;
         private String adminEmail;
         private String adminPassword;
     }

@@ -9,6 +9,7 @@ cbwa:
     encryption-key: dGVzdC1vbmx5LWVuY3J5cHRpb24ta2V5LTMyYnl0ZSE=
     api-secret-pepper: dGVzdC1vbmx5LXBlcHBlcg==
   seed:
+    admin-mobile: "9876500001"
     admin-email: admin@test.local
     admin-password: Admin@12345
 logging:

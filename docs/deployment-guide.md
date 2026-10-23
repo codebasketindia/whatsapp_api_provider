@@ -28,7 +28,7 @@ Let's Encrypt certificate (auto-renew timer), cron jobs for backups and health c
 ```bash
 sudo mysql -e "ALTER USER 'cbwa_app'@'localhost' IDENTIFIED BY '<strong-db-password>';"
 sudo mysql -e "ALTER USER 'cbwa_backup'@'localhost' IDENTIFIED BY '<strong-backup-password>';"
-sudo nano /etc/cbwa/cbwa.env      # CBWA_DB_PASSWORD, CBWA_SEED_ADMIN_EMAIL, CBWA_SEED_ADMIN_PASSWORD
+sudo nano /etc/cbwa/cbwa.env      # CBWA_DB_PASSWORD, CBWA_SEED_ADMIN_MOBILE, CBWA_SEED_ADMIN_EMAIL, CBWA_SEED_ADMIN_PASSWORD
 printf "[client]\nuser=cbwa_backup\npassword=<strong-backup-password>\n" | sudo tee /etc/cbwa/backup.cnf
 printf "[client]\nuser=root\n" | sudo tee /etc/cbwa/restore.cnf
 sudo chmod 600 /etc/cbwa/backup.cnf /etc/cbwa/restore.cnf
@@ -52,7 +52,9 @@ curl -s https://wa.example.com/actuator/health
 ```
 
 ## 5. First login
-Open `https://wa.example.com/login`, log in with the seed admin email/password and choose a new password.
+Open `https://wa.example.com/login`, log in with the seed admin **mobile number** and password and choose a new
+password. All users (admins, staff, partners) log in with their mobile number + password; OTP codes for
+forgot-password and 2-step login go to the email on the account.
 Then in **Settings**: Company (name, GSTIN, state, logo), SMTP (send a test email), GST & invoice, Charging rule,
 Payment gateway, API limits. In **Pricing → Rate plans** enter India prices for the default plan
 (sending is blocked until prices exist). Activate the credit packs you want to sell.

@@ -10,6 +10,7 @@ cbwa:
     encryption-key: ${CBWA_ENCRYPTION_KEY:ZGV2LW9ubHktZW5jcnlwdGlvbi1rZXktMzJieXRlcyE=}
     api-secret-pepper: ${CBWA_API_SECRET_PEPPER:ZGV2LW9ubHktcGVwcGVyLWNid2EtZGV2LXBlcHBlciE=}
   seed:
+    admin-mobile: ${CBWA_SEED_ADMIN_MOBILE:9999999999}
     admin-email: ${CBWA_SEED_ADMIN_EMAIL:admin@cbwa.local}
     admin-password: ${CBWA_SEED_ADMIN_PASSWORD:Admin@12345}
 logging:

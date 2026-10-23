@@ -14,7 +14,7 @@ public final class UserRequests {
     }
 
     public record UpdateProfileRequest(@NotBlank @Size(max = 120) String name,
-                                       @Pattern(regexp = "^$|^\\+?[0-9]{8,15}$", message = "Enter a valid mobile number") String mobile,
+                                       @NotBlank(message = "Enter the mobile number") @Size(max = 20) String mobile,
                                        @Pattern(regexp = "LIGHT|DARK|SYSTEM", message = "Invalid theme") String theme) {
     }
 
@@ -27,12 +27,12 @@ public final class UserRequests {
     }
 
     public record CreateStaffRequest(@NotBlank @Size(max = 120) String name, @NotBlank @Email @Size(max = 190) String email,
-                                     @Pattern(regexp = "^$|^\\+?[0-9]{8,15}$", message = "Enter a valid mobile number") String mobile,
+                                     @NotBlank(message = "Enter the mobile number") @Size(max = 20) String mobile,
                                      @NotNull Long roleId, @Size(min = 8, max = 72) String password) {
     }
 
     public record UpdateStaffRequest(@NotBlank @Size(max = 120) String name,
-                                     @Pattern(regexp = "^$|^\\+?[0-9]{8,15}$", message = "Enter a valid mobile number") String mobile,
+                                     @NotBlank(message = "Enter the mobile number") @Size(max = 20) String mobile,
                                      @NotNull Long roleId) {
     }
 

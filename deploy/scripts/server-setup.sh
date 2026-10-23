@@ -39,7 +39,7 @@ if [[ ! -f /etc/cbwa/cbwa.env ]]; then
   sed -i "s#^CBWA_JWT_SECRET=.*#CBWA_JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')#" /etc/cbwa/cbwa.env
   sed -i "s#^CBWA_ENCRYPTION_KEY=.*#CBWA_ENCRYPTION_KEY=$(openssl rand -base64 32)#" /etc/cbwa/cbwa.env
   sed -i "s#^CBWA_API_SECRET_PEPPER=.*#CBWA_API_SECRET_PEPPER=$(openssl rand -base64 32)#" /etc/cbwa/cbwa.env
-  echo ">>> Edit /etc/cbwa/cbwa.env: set CBWA_DB_PASSWORD, CBWA_SEED_ADMIN_EMAIL/PASSWORD. BACK UP CBWA_ENCRYPTION_KEY."
+  echo ">>> Edit /etc/cbwa/cbwa.env: set CBWA_DB_PASSWORD, CBWA_SEED_ADMIN_MOBILE/EMAIL/PASSWORD. BACK UP CBWA_ENCRYPTION_KEY."
 fi
 
 # systemd, logrotate

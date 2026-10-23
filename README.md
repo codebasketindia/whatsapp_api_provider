@@ -6,7 +6,7 @@ Razorpay · deployed on Ubuntu with systemd + Nginx (no Docker).
 
 ## Quick start (local)
 ```bash
-cd backend && mvn spring-boot:run          # http://localhost:8080  (admin@cbwa.local / Admin@12345, dev only)
+cd backend && mvn spring-boot:run          # http://localhost:8080  (login: mobile 9999999999 / Admin@12345, dev only)
 cd frontend && npm install && npm run dev  # http://localhost:5173
 ```
 Full steps: [docs/local-setup.md](docs/local-setup.md) · Production: [docs/deployment-guide.md](docs/deployment-guide.md)
@@ -16,7 +16,7 @@ Full steps: [docs/local-setup.md](docs/local-setup.md) · Production: [docs/depl
 |---|---|---|---|
 | 0 | Planning & architecture | ✅ | `docs/phase-0/` (contract v1.1 changelog lists every agreed change) |
 | 1 | Foundation (both apps, layouts, component library) | ✅ | app starts on MySQL with schema validation; UI renders 360 px → desktop |
-| 2 | Auth, users, roles, 2FA, lockout | ✅ | `AuthFlowIT`; browser: forced password change, role blocking |
+| 2 | Auth, users, roles, 2FA, lockout | ✅ | **mobile number + password login for all users**; `AuthFlowIT`; browser: forced password change, role blocking |
 | 3 | Partner management, login-as-partner | ✅ | `PartnerManagementIT`; browser: admin creates partner who logs in |
 | 4 | Wallet ledger, manual top-up, credit packs, low balance | ✅ | `WalletServiceIT` (50 concurrent holds), `TopupAndWalletIT`; browser: ₹1,000 request → approve → balance & ledger correct, duplicate UTR blocked |
 | 5 | Razorpay UPI gateway, GST invoices, reconciliation | ✅ | `RazorpayPaymentIT` (signature, repeated webhook credits once, reconcile) — live test-mode payment needs your Razorpay keys |
@@ -28,7 +28,7 @@ Full steps: [docs/local-setup.md](docs/local-setup.md) · Production: [docs/depl
 | 11 | Dashboards, reports, reconciliation, settings, audit | ✅ | `DashboardReportIT`, `MetaPricingAnalyticsJobIT`, `CleanupJobIT` |
 | 12 | Hardening & go-live kit | ✅ | systemd/Nginx/SSL/backup scripts, prod-profile JAR run, Playwright crawl of 90 screens at 390 px & 1280 px with zero API/JS errors |
 
-Automated: **84 backend tests** (real MySQL 8) and **56 frontend tests**, all green.
+Automated: **88 backend tests** (real MySQL 8) and **56 frontend tests**, all green.
 
 **Needs your accounts/domain to finish go-live** (cannot be done from the build environment): a real WhatsApp
 message to your phone (Meta app + number), Embedded Signup with a real partner, Razorpay test-mode payment,

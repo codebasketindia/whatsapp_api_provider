@@ -71,9 +71,11 @@ public class TestData {
     private final TokenService tokenService;
     private final CryptoService crypto;
     private final SettingsService settingsService;
+    private final in.codebasket.cbwa.auth.LoginRateLimiter loginRateLimiter;
 
     public void resetCaches() {
         settingsService.evictAll();
+        loginRateLimiter.cleanup();
     }
 
     @Transactional
@@ -84,7 +86,9 @@ public class TestData {
         u.setUserType(UserType.ADMIN);
         u.setRole(role);
         u.setName("Admin " + SEQ.incrementAndGet());
-        u.setEmail("admin" + SEQ.incrementAndGet() + "@test.local");
+        int an = SEQ.incrementAndGet();
+        u.setEmail("admin" + an + "@test.local");
+        u.setMobile("9198" + String.format("%08d", an));
         u.setPasswordHash(passwordEncoder.encode(PASSWORD));
         u.setStatus(UserStatus.ACTIVE);
         return userRepository.save(u);
@@ -104,6 +108,7 @@ public class TestData {
         u.setRole(roleRepository.findByCode("API_PARTNER").orElseThrow());
         u.setName("Partner User " + n);
         u.setEmail("partner" + n + "@test.local");
+        u.setMobile("9197" + String.format("%08d", n));
         u.setPasswordHash(passwordEncoder.encode(PASSWORD));
         u.setStatus(UserStatus.ACTIVE);
         userRepository.save(u);
@@ -115,7 +120,7 @@ public class TestData {
         p.setBusinessName("Business " + n);
         p.setContactName("Contact " + n);
         p.setEmail(u.getEmail());
-        p.setMobile("9198765" + String.format("%05d", n % 100000));
+        p.setMobile(u.getMobile());
         p.setStatus(PartnerStatus.ACTIVE);
         p.setRatePlanId(defaultPlan().getId());
         p.setAllowOwnNumber(true);

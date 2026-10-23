@@ -83,6 +83,7 @@ cbwa:
     encryption-key: ${CBWA_ENCRYPTION_KEY:}
     api-secret-pepper: ${CBWA_API_SECRET_PEPPER:}
   seed:
+    admin-mobile: ${CBWA_SEED_ADMIN_MOBILE:}
     admin-email: ${CBWA_SEED_ADMIN_EMAIL:}
     admin-password: ${CBWA_SEED_ADMIN_PASSWORD:}
   storage:

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { mobileSchema } from '../../lib/mobile';
 import toast from 'react-hot-toast';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
@@ -14,10 +15,7 @@ import { formatDateTime, humanize } from '../../lib/format';
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, 'Enter your name').max(120),
-  mobile: z
-    .string()
-    .optional()
-    .refine((v) => !v || /^[1-9]\d{7,14}$/.test(v), 'Enter a valid mobile number'),
+  mobile: mobileSchema,
 });
 
 function ProfileForm() {
@@ -32,7 +30,7 @@ function ProfileForm() {
   } = useForm({ resolver: zodResolver(profileSchema), defaultValues: { name: user?.name || '', mobile: user?.mobile || '' } });
   const onSubmit = async (values) => {
     try {
-      const updated = await meApi.updateMe({ name: values.name.trim(), mobile: values.mobile || null, theme: user?.theme });
+      const updated = await meApi.updateMe({ name: values.name.trim(), mobile: values.mobile, theme: user?.theme });
       setUser(updated);
       reset({ name: updated.name, mobile: updated.mobile || '' });
       toast.success('Profile saved');
@@ -44,7 +42,7 @@ function ProfileForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <Input label="Full name" autoComplete="name" error={errors.name} {...register('name')} />
       <Input label="Email" value={user?.email || ''} disabled hint="Contact support to change your login email." readOnly />
-      <PhoneInput label="Mobile" value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldDirty: true, shouldValidate: true })} error={errors.mobile} />
+      <PhoneInput label="Mobile number (used to log in)" required value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldDirty: true, shouldValidate: true })} error={errors.mobile} />
       <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
         Save changes
       </Button>

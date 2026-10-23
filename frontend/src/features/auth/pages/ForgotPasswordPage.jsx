@@ -7,11 +7,12 @@ import toast from 'react-hot-toast';
 import { forgotPassword, resetPassword } from '../../../api/endpoints/auth';
 import { getErrorMessage } from '../../../api/axios';
 import { PASSWORD_HINT, PASSWORD_RULE } from '../../../lib/constants';
-import { Alert, Button, Input, PasswordInput } from '../../../components/ui';
+import { Alert, Button, Input, PasswordInput, PhoneInput } from '../../../components/ui';
+import { mobileSchema } from '../../../lib/mobile';
 import AuthShell from '../components/AuthShell';
 import { OtpBoxes, useCountdown } from './VerifyOtpPage';
 
-const emailSchema = z.object({ email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email') });
+const mobileFormSchema = z.object({ mobile: mobileSchema });
 const resetSchema = z
   .object({
     newPassword: z.string().regex(PASSWORD_RULE, PASSWORD_HINT),
@@ -22,24 +23,24 @@ const resetSchema = z
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [challengeId, setChallengeId] = useState(null);
   const [otp, setOtp] = useState('');
   const [error, setError] = useState(null);
   const [left, setLeft] = useCountdown(0);
 
-  const emailForm = useForm({ resolver: zodResolver(emailSchema), defaultValues: { email: '' } });
+  const emailForm = useForm({ resolver: zodResolver(mobileFormSchema), defaultValues: { mobile: '' } });
   const resetForm = useForm({ resolver: zodResolver(resetSchema), defaultValues: { newPassword: '', confirmPassword: '' } });
 
-  const sendCode = async ({ email: e }) => {
+  const sendCode = async ({ mobile: m }) => {
     setError(null);
     try {
-      const res = await forgotPassword(e.trim().toLowerCase());
-      setEmail(e.trim().toLowerCase());
+      const res = await forgotPassword(m);
+      setMobile(m);
       setChallengeId(res?.challengeId);
       setStep(2);
       setLeft(30);
-      toast.success('If this email is registered, a code has been sent');
+      toast.success('If this number is registered, a code has been sent to its email');
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -62,7 +63,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell
       title={step === 1 ? 'Forgot password' : 'Set a new password'}
-      subtitle={step === 1 ? 'Enter your email and we will send you a 6-digit code.' : `Enter the code sent to ${email} and choose a new password.`}
+      subtitle={step === 1 ? 'Enter your mobile number. We will email a 6-digit code to the email address on your account.' : 'Enter the 6-digit code from your email and choose a new password.'}
       footer={
         <Link to="/login" className="inline-flex min-h-[36px] items-center font-medium text-brand-700 hover:underline dark:text-brand-300">
           Back to log in
@@ -76,7 +77,14 @@ export default function ForgotPasswordPage() {
       )}
       {step === 1 ? (
         <form onSubmit={emailForm.handleSubmit(sendCode)} className="space-y-4" noValidate>
-          <Input label="Email" type="email" autoComplete="email" autoFocus error={emailForm.formState.errors.email} {...emailForm.register('email')} />
+          <PhoneInput
+            label="Mobile number"
+            autoComplete="username"
+            autoFocus
+            value={emailForm.watch('mobile')}
+            onChange={(v) => emailForm.setValue('mobile', v, { shouldValidate: Boolean(emailForm.formState.errors.mobile) })}
+            error={emailForm.formState.errors.mobile}
+          />
           <Button type="submit" fullWidth size="lg" loading={emailForm.formState.isSubmitting}>
             Send code
           </Button>
@@ -90,7 +98,7 @@ export default function ForgotPasswordPage() {
               {left > 0 ? (
                 `You can request a new code in ${left}s`
               ) : (
-                <button type="button" onClick={() => sendCode({ email })} className="min-h-[36px] font-medium text-brand-700 hover:underline dark:text-brand-300">
+                <button type="button" onClick={() => sendCode({ mobile })} className="min-h-[36px] font-medium text-brand-700 hover:underline dark:text-brand-300">
                   Send a new code
                 </button>
               )}

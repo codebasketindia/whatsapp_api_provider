@@ -79,8 +79,8 @@ export function AuthProvider({ children }) {
 
   /** Step 1. Returns { user } or { twoFactorRequired, challengeId, maskedEmail }. */
   const login = useCallback(
-    async (email, password) => {
-      const data = await authApi.login({ email, password });
+    async (mobile, password) => {
+      const data = await authApi.login({ mobile, password });
       if (data?.twoFactorRequired) return data;
       return { user: acceptTokens(data) };
     },

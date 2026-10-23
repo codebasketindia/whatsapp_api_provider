@@ -472,3 +472,8 @@ Events: `message.status`, `message.inbound` (`{from, senderId, type, text|media{
   - PU1 accepts `from`, `senderId` or neither (default sender); returns `{id, status, price, to, clientReference}`.
     PU2 recipients accept `bodyVariables` (positional) or `variables` (named) and `clientReference`.
     `Idempotency-Key` honoured for 24 h on PU1.
+- v1.2 — **Mobile number login for all users.** A1 body `{mobile, password}` (any Indian format: 9876543210,
+  +91 98765 43210, 09876543210; `email` still accepted for older clients). A6 body `{mobile}`; the OTP is emailed to
+  the account email. `users.mobile` is required (staff S7/S8, profile A9, partner P2/P4) and unique across all users
+  (field error `mobile`: "This mobile number is already registered"); stored as E.164 digits (919876543210).
+  New env `CBWA_SEED_ADMIN_MOBILE`. AUTH_INVALID_CREDENTIALS message: "Mobile number or password is incorrect".

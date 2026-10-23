@@ -23,7 +23,7 @@ cd backend
 mvn spring-boot:run            # dev profile: http://localhost:8080
 ```
 The **dev** profile has built-in development-only secrets and creates the super admin
-`admin@cbwa.local` / `Admin@12345`. OTP codes are printed in the console (dev only) so you can test 2FA and
+mobile `9999999999` / password `Admin@12345` (email `admin@cbwa.local`). Everyone logs in with mobile number + password. OTP codes are printed in the console (dev only) so you can test 2FA and
 forgot-password without SMTP. Flyway creates all tables on first start.
 
 Swagger UI: http://localhost:8080/swagger-ui.html · Health: http://localhost:8080/actuator/health

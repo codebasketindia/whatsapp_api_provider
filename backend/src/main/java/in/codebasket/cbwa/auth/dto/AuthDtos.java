@@ -11,7 +11,9 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
-    public record LoginRequest(@NotBlank @Email @Size(max = 190) String email, @NotBlank @Size(max = 128) String password) {
+    /** Login with mobile number + password. `email` is still accepted for older API clients. */
+    public record LoginRequest(@Size(max = 30) String mobile, @Email @Size(max = 190) String email,
+                               @NotBlank @Size(max = 128) String password) {
     }
 
     public record TwoFactorRequest(@NotBlank String challengeId, @NotBlank @Pattern(regexp = "\\d{6}", message = "Enter the 6 digit code") String otp) {
@@ -26,7 +28,8 @@ public final class AuthDtos {
     public record LogoutRequest(String refreshToken) {
     }
 
-    public record ForgotPasswordRequest(@NotBlank @Email String email) {
+    /** Reset by mobile number (or email). The code is sent to the account's registered email. */
+    public record ForgotPasswordRequest(@Size(max = 30) String mobile, @Email String email) {
     }
 
     public record ResetPasswordRequest(@NotBlank String challengeId,

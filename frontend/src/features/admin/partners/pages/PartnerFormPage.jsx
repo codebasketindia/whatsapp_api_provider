@@ -150,7 +150,7 @@ export default function PartnerFormPage() {
             <Input label="Business name" required error={errors.businessName} {...register('businessName')} />
             <Input label="Contact person" required error={errors.contactName} {...register('contactName')} />
             <Input label="Email (login)" type="email" required disabled={editing} hint={editing ? 'Login email cannot be changed.' : undefined} error={errors.email} {...register('email')} />
-            <PhoneInput label="Mobile" required value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldValidate: true, shouldDirty: true })} error={errors.mobile} />
+            <PhoneInput label="Mobile number (used to log in)" required value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldValidate: true, shouldDirty: true })} error={errors.mobile} />
             <Input label="Website" placeholder="https://example.com" error={errors.website} {...register('website')} />
           </div>
         </Card>

@@ -35,14 +35,22 @@ public class SuperAdminSeeder implements ApplicationRunner {
         superAdmin.setPermissions(new HashSet<>(permissionRepository.findAll()));
         roleRepository.save(superAdmin);
 
-        boolean exists = userRepository.findByUserTypeAndStatus(UserType.ADMIN, UserStatus.ACTIVE).stream().anyMatch(User::isSuperAdmin);
-        if (exists) {
+        String seedMobile = MobileNumbers.normaliseOrNull(props.getSeed().getAdminMobile());
+        var existing = userRepository.findByUserTypeAndStatus(UserType.ADMIN, UserStatus.ACTIVE).stream().filter(User::isSuperAdmin).toList();
+        if (!existing.isEmpty()) {
+            // Upgrade path: super admins created before mobile login get the seed mobile so they can log in.
+            User first = existing.get(0);
+            if (first.getMobile() == null && seedMobile != null && userRepository.findByMobile(seedMobile).isEmpty()) {
+                first.setMobile(seedMobile);
+                userRepository.save(first);
+                log.info("Super admin {} can now log in with the seed mobile number", first.getEmail());
+            }
             return;
         }
         String email = props.getSeed().getAdminEmail();
         String password = props.getSeed().getAdminPassword();
-        if (email == null || email.isBlank() || password == null || password.isBlank()) {
-            log.warn("No super admin exists. Set CBWA_SEED_ADMIN_EMAIL and CBWA_SEED_ADMIN_PASSWORD and restart.");
+        if (email == null || email.isBlank() || password == null || password.isBlank() || seedMobile == null) {
+            log.warn("No super admin exists. Set CBWA_SEED_ADMIN_MOBILE, CBWA_SEED_ADMIN_EMAIL and CBWA_SEED_ADMIN_PASSWORD and restart.");
             return;
         }
         PasswordPolicy.check(password);
@@ -56,10 +64,11 @@ public class SuperAdminSeeder implements ApplicationRunner {
         u.setRole(superAdmin);
         u.setName("Super Admin");
         u.setEmail(email.trim().toLowerCase());
+        u.setMobile(seedMobile);
         u.setPasswordHash(passwordEncoder.encode(password));
         u.setStatus(UserStatus.ACTIVE);
         u.setMustChangePassword(!props.isDevMode());
         userRepository.save(u);
-        log.info("Super admin {} created", u.getEmail());
+        log.info("Super admin created (mobile {})", in.codebasket.cbwa.common.util.PhoneUtil.mask(seedMobile));
     }
 }

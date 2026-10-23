@@ -46,8 +46,8 @@ public class AuthService {
 
     /** A1: returns TokenDto, or TwoFactorChallenge for admins with 2FA. */
     @Transactional(noRollbackFor = AppException.class)
-    public Object login(String email, String password) {
-        User user = userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+    public Object login(String mobile, String email, String password) {
+        User user = findLoginUser(mobile, email);
         if (user == null) {
             if (dummyHash == null) {
                 dummyHash = passwordEncoder.encode(in.codebasket.cbwa.common.crypto.TokenGenerator.urlSafe(16));
@@ -151,8 +151,8 @@ public class AuthService {
 
     /** A6: always succeeds (no account enumeration). */
     @Transactional
-    public ChallengeDto forgotPassword(String email) {
-        return userRepository.findByEmailIgnoreCase(email.trim())
+    public ChallengeDto forgotPassword(String mobile, String email) {
+        return java.util.Optional.ofNullable(findLoginUser(mobile, email))
                 .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                 .map(u -> new ChallengeDto(otpService.create(u, OtpPurpose.PASSWORD_RESET)))
                 .orElseGet(() -> new ChallengeDto(Ulids.next()));
@@ -216,6 +216,21 @@ public class AuthService {
                 throw new AppException(ErrorCode.AUTH_ACCOUNT_DISABLED, "Your account is suspended. Please contact support");
             }
         }
+    }
+
+    /** Mobile number is the login id; email still works as a fallback for older clients. */
+    private User findLoginUser(String mobile, String email) {
+        if (mobile != null && !mobile.isBlank()) {
+            if (mobile.contains("@")) {
+                return userRepository.findByEmailIgnoreCase(mobile.trim()).orElse(null);
+            }
+            String digits = in.codebasket.cbwa.user.MobileNumbers.normaliseOrNull(mobile);
+            return digits == null ? null : userRepository.findByMobile(digits).orElse(null);
+        }
+        if (email != null && !email.isBlank()) {
+            return userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+        }
+        throw AppException.field("mobile", "Enter your mobile number");
     }
 
     static String maskEmail(String email) {

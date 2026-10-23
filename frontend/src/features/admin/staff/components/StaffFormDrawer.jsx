@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { mobileSchema } from '../../../../lib/mobile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as staffApi from '../../../../api/endpoints/staff';
@@ -12,10 +13,7 @@ import { Button, Drawer, Input, PasswordInput, PhoneInput, Select } from '../../
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter the name').max(120),
   email: z.string().trim().email('Enter a valid email'),
-  mobile: z
-    .string()
-    .optional()
-    .refine((v) => !v || /^[1-9]\d{7,14}$/.test(v), 'Enter a valid mobile number'),
+  mobile: mobileSchema,
   roleId: z.string().min(1, 'Choose a role'),
   password: z
     .string()
@@ -57,7 +55,7 @@ export default function StaffFormDrawer({ open, onClose, staff }) {
 
   const save = useMutation({
     mutationFn: (v) => {
-      const body = { name: v.name.trim(), mobile: v.mobile || null, roleId: Number(v.roleId) };
+      const body = { name: v.name.trim(), mobile: v.mobile, roleId: Number(v.roleId) };
       if (editing) return staffApi.updateStaff(staff.uid, body);
       return staffApi.createStaff({ ...body, email: v.email.trim().toLowerCase(), password: v.password || undefined });
     },
@@ -95,7 +93,7 @@ export default function StaffFormDrawer({ open, onClose, staff }) {
       <form className="space-y-4" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
         <Input label="Full name" required error={errors.name} {...register('name')} />
         <Input label="Email" type="email" required disabled={editing} error={errors.email} {...register('email')} />
-        <PhoneInput label="Mobile" value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldValidate: true })} error={errors.mobile} />
+        <PhoneInput label="Mobile number (used to log in)" required value={watch('mobile')} onChange={(v) => setValue('mobile', v, { shouldValidate: true })} error={errors.mobile} />
         <Select
           label="Role"
           required

@@ -23,7 +23,7 @@ const problems = [];
 p.on('response', r => { if (r.status() >= 400 && r.url().includes('/api/')) problems.push(`${current}: ${r.status()} ${r.request().method()} ${r.url().replace(BASE, '')}`); });
 p.on('pageerror', e => problems.push(`${current}: PAGEERROR ${e.message}`));
 await p.goto(BASE + '/login');
-await p.getByLabel('Email').fill(email);
+await p.getByLabel('Mobile number').fill(email);
 await p.getByRole('textbox', { name: 'Password', exact: true }).fill(pass);
 await p.getByRole('button', { name: 'Log in' }).click(); await p.waitForTimeout(2000);
 for (const r of routes) {

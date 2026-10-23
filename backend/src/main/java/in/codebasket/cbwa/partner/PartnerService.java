@@ -70,6 +70,7 @@ public class PartnerService {
     private final PartnerSettingsRepository settingsRepository;
     private final PartnerCampaignControlRepository campaignControl;
     private final UserRepository userRepository;
+    private final in.codebasket.cbwa.user.MobileNumbers mobileNumbers;
     private final RoleRepository roleRepository;
     private final RatePlanRepository ratePlanRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -160,6 +161,7 @@ public class PartnerService {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw AppException.field("email", "This email is already registered");
         }
+        String mobile = mobileNumbers.requireUnique(req.mobile(), null, "mobile");
         RatePlan plan = resolvePlan(req.ratePlanId(), null);
         String password = req.password();
         boolean generated = password == null || password.isBlank();
@@ -175,7 +177,7 @@ public class PartnerService {
         u.setRole(roleRepository.findByCode("API_PARTNER").orElseThrow());
         u.setName(req.contactName().trim());
         u.setEmail(email);
-        u.setMobile(req.mobile().trim());
+        u.setMobile(mobile);
         u.setPasswordHash(passwordEncoder.encode(password));
         u.setStatus(UserStatus.ACTIVE);
         u.setMustChangePassword(true);
@@ -188,7 +190,7 @@ public class PartnerService {
         p.setStatus(PartnerStatus.ACTIVE);
         p.setRatePlanId(plan.getId());
         p.setAllowOwnNumber(req.allowOwnNumber());
-        applyProfile(p, req.businessName(), req.contactName(), email, req.mobile(), req.gstin(), req.pan(), req.address(), req.website());
+        applyProfile(p, req.businessName(), req.contactName(), email, mobile, req.gstin(), req.pan(), req.address(), req.website());
         partnerRepository.save(p);
 
         PartnerSettings ps = new PartnerSettings();
@@ -218,11 +220,12 @@ public class PartnerService {
             }
             u.setEmail(email);
         }
+        String mobile = mobileNumbers.requireUnique(req.mobile(), u.getId(), "mobile");
         u.setName(req.contactName().trim());
-        u.setMobile(req.mobile().trim());
+        u.setMobile(mobile);
         userRepository.save(u);
 
-        applyProfile(p, req.businessName(), req.contactName(), email, req.mobile(), req.gstin(), req.pan(), req.address(), req.website());
+        applyProfile(p, req.businessName(), req.contactName(), email, mobile, req.gstin(), req.pan(), req.address(), req.website());
         if (req.ratePlanId() != null && !req.ratePlanId().equals(p.getRatePlanId())) {
             if (!SecurityUtils.current().hasPermission("PRICING_MANAGE")) {
                 throw AppException.forbidden();

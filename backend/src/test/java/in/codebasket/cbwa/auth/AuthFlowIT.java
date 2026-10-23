@@ -71,6 +71,48 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("AUTH_REFRESH_INVALID"));
     }
 
+    @Test
+    void loginWithMobileNumberInAnyFormat() throws Exception {
+        User admin = testData.superAdmin();
+        Partner partner = testData.partner(BigDecimal.ZERO);
+        String partnerLocal = partner.getMobile().substring(2); // 10-digit national number
+        for (String typed : new String[]{partnerLocal, "+91 " + partnerLocal, "0" + partnerLocal, partner.getMobile()}) {
+            mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"mobile\":\"" + typed + "\",\"password\":\"" + TestData.PASSWORD + "\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.user.userType").value("PARTNER"));
+        }
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mobile\":\"" + admin.getMobile() + "\",\"password\":\"" + TestData.PASSWORD + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.user.userType").value("ADMIN"));
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mobile\":\"" + partnerLocal + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"));
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"x\"}"))
+                .andExpect(status().isBadRequest());
+        // forgot password by mobile always answers with a challenge (no account enumeration)
+        mockMvc.perform(post("/api/auth/forgot-password").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mobile\":\"" + partnerLocal + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.challengeId").isNotEmpty());
+    }
+
+    @Test
+    void mobileNumberMustBeUniqueAcrossUsers() throws Exception {
+        User admin = testData.superAdmin();
+        Partner partner = testData.partner(BigDecimal.ZERO);
+        String token = login(admin.getEmail());
+        mockMvc.perform(post("/api/admin/staff").header("Authorization", TestData.bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Staff\",\"email\":\"staff1@test.local\",\"mobile\":\"+91 " + partner.getMobile().substring(2)
+                                + "\",\"roleId\":3,\"password\":\"Staff@12345\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[0].field").value("mobile"));
+        mockMvc.perform(post("/api/admin/staff").header("Authorization", TestData.bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Staff\",\"email\":\"staff1@test.local\",\"mobile\":\"98111 22233\",\"roleId\":3,\"password\":\"Staff@12345\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mobile\":\"9811122233\",\"password\":\"Staff@12345\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.user.mustChangePassword").value(true));
+    }
+
     private String login(String email) throws Exception {
         String body = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"" + TestData.PASSWORD + "\"}"))

@@ -29,12 +29,13 @@ public final class PhoneUtil {
             return Optional.empty();
         }
         // Numbers like 919876543210 (already with country code, no plus) are common in CSV uploads.
-        if (!cleaned.startsWith("+") && cleaned.length() > 10) {
-            cleaned = "+" + cleaned;
-        }
         if (cleaned.startsWith("00")) {
             cleaned = "+" + cleaned.substring(2);
+        } else if (!cleaned.startsWith("+") && !cleaned.startsWith("0") && cleaned.length() > 10) {
+            // 919876543210 - country code without "+" (common in CSV uploads)
+            cleaned = "+" + cleaned;
         }
+        // a single leading 0 (09876543210) is the national trunk prefix and is parsed with the default region
         try {
             Phonenumber.PhoneNumber pn = UTIL.parse(cleaned, defaultRegion == null ? "IN" : defaultRegion);
             if (!UTIL.isValidNumber(pn)) {

@@ -1,7 +1,8 @@
 # Partner Guide — Sending WhatsApp messages with CB WhatsApp Gateway
 
 ## 1. Log in
-Use the email and temporary password from your welcome email. You will be asked to set your own password.
+Log in with your **mobile number** and the temporary password from your welcome email. You will be asked to set
+your own password. Forgot it? Tap *Forgot password*, enter your mobile number and use the code sent to your email.
 
 ## 2. Add money
 **Wallet → Add money** (or the green button at the bottom on mobile):

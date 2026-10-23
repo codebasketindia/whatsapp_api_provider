@@ -33,7 +33,7 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<Object> login(@Valid @RequestBody LoginRequest req) {
         rateLimiter.check("login", ClientIp.current());
-        Object result = authService.login(req.email(), req.password());
+        Object result = authService.login(req.mobile(), req.email(), req.password());
         if (result instanceof TwoFactorChallenge c) {
             return ApiResponse.custom("AUTH_2FA_REQUIRED", "Enter the code sent to " + c.maskedEmail(), c);
         }
@@ -66,8 +66,8 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ApiResponse<ChallengeDto> forgot(@Valid @RequestBody ForgotPasswordRequest req) {
         rateLimiter.check("forgot", ClientIp.current());
-        return ApiResponse.ok(authService.forgotPassword(req.email()),
-                "If this email is registered, a reset code has been sent");
+        return ApiResponse.ok(authService.forgotPassword(req.mobile(), req.email()),
+                "If this number is registered, a reset code has been sent to the account's email");
     }
 
     @PostMapping("/reset-password")

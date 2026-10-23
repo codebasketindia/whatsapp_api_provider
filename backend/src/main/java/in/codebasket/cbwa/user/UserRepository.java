@@ -10,6 +10,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     Optional<User> findByUid(String uid);
 
+    Optional<User> findByMobile(String mobile);
+
     boolean existsByEmailIgnoreCase(String email);
 
     long countByRoleId(Long roleId);

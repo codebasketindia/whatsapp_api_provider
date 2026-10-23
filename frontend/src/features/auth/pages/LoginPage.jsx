@@ -9,11 +9,12 @@ import { homePathFor } from '../../../auth/AuthProvider';
 import { getErrorCode, getErrorMessage } from '../../../api/axios';
 import { session } from '../../../lib/storage';
 import { formatDateTime } from '../../../lib/format';
-import { Alert, Button, FullPageLoader, Input, PasswordInput } from '../../../components/ui';
+import { Alert, Button, FullPageLoader, PasswordInput, PhoneInput } from '../../../components/ui';
 import AuthShell from '../components/AuthShell';
+import { mobileSchema } from '../../../lib/mobile';
 
 const schema = z.object({
-  email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email'),
+  mobile: mobileSchema,
   password: z.string().min(1, 'Enter your password'),
 });
 
@@ -32,8 +33,10 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } });
+  } = useForm({ resolver: zodResolver(schema), defaultValues: { mobile: '', password: '' } });
 
   useEffect(() => {
     if (params.get('reset') === '1') setError(null);
@@ -45,7 +48,7 @@ export default function LoginPage() {
   const onSubmit = async (values) => {
     setError(null);
     try {
-      const res = await login(values.email.trim().toLowerCase(), values.password);
+      const res = await login(values.mobile, values.password);
       if (res.twoFactorRequired) {
         session.set(TWO_FA_KEY, JSON.stringify({ challengeId: res.challengeId, maskedEmail: res.maskedEmail, next: params.get('next') }));
         navigate('/login/verify');
@@ -79,7 +82,14 @@ export default function LoginPage() {
         </Alert>
       )}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <Input label="Email" type="email" autoComplete="username" inputMode="email" autoFocus error={errors.email} {...register('email')} />
+        <PhoneInput
+          label="Mobile number"
+          autoComplete="username"
+          autoFocus
+          value={watch('mobile')}
+          onChange={(v) => setValue('mobile', v, { shouldValidate: Boolean(errors.mobile) })}
+          error={errors.mobile}
+        />
         <PasswordInput label="Password" autoComplete="current-password" error={errors.password} {...register('password')} />
         <div className="flex justify-end">
           <Link to="/forgot-password" className="inline-flex min-h-[36px] items-center text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">

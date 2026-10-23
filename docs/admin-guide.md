@@ -10,8 +10,9 @@ Plain-language guide for CodeBasket staff. Every money action asks for confirmat
 3. **WhatsApp → All senders** — anything paused or with low quality? Open it to see why.
 
 ## Partners
-- **Add partner**: business name, contact, email (their login), mobile, GSTIN/PAN, address, rate plan,
-  "Allow own number". A temporary password is emailed; they must change it at first login.
+- **Add partner**: business name, contact, **mobile number (their login)**, email (for codes and notices), GSTIN/PAN,
+  address, rate plan, "Allow own number". A temporary password is emailed; they must change it at first login.
+  Each mobile number can belong to only one user (admin, staff or partner).
 - **Suspend**: blocks login and API, pauses running campaigns. **Activate** to undo.
 - **Wallet tab**: balance, money on hold (messages in flight), full passbook. **Credit / Debit** needs a remark.
   Debit can never make the balance negative.
