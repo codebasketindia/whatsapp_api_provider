@@ -122,6 +122,24 @@ public class GlobalExceptionHandler {
         return build(ErrorCode.CONFLICT, "This record already exists or is linked to other data", null, null);
     }
 
+    /**
+     * Unknown enum values in filters (e.g. status=NOPE) surface as IllegalArgumentException, sometimes
+     * wrapped by Spring Data (InvalidDataAccessApiUsageException). They are client errors, not 500s.
+     */
+    @ExceptionHandler({IllegalArgumentException.class, org.springframework.dao.InvalidDataAccessApiUsageException.class})
+    public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(RuntimeException ex) {
+        Throwable root = ex;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String msg = root.getMessage() == null ? "" : root.getMessage();
+        if (root instanceof IllegalArgumentException && msg.startsWith("No enum constant")) {
+            return build(ErrorCode.BAD_REQUEST, "Invalid value: " + msg.substring(msg.lastIndexOf('.') + 1), null, null);
+        }
+        log.error("Unhandled error", ex);
+        return build(ErrorCode.INTERNAL_ERROR, null, null, null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleAll(Exception ex) {
         log.error("Unhandled error", ex);

@@ -62,9 +62,12 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected TestData testData;
 
+    @Autowired
+    protected org.flywaydb.core.Flyway flyway;
+
     @BeforeEach
     void cleanDatabase() {
-        DatabaseCleaner.clean(jdbc);
+        DatabaseCleaner.clean(jdbc, flyway);
         testData.resetCaches();
     }
 }

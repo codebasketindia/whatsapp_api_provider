@@ -83,6 +83,12 @@ public class SecurityConfig {
         return reg;
     }
 
+    /** URLs rejected by Spring Security's firewall (e.g. encoded "../") get the standard JSON error envelope. */
+    @Bean
+    public org.springframework.security.web.firewall.RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, ex) -> SecurityErrorWriter.write(response, ErrorCode.BAD_REQUEST, "This request URL is not allowed");
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

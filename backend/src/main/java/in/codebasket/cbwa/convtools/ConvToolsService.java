@@ -125,7 +125,12 @@ public class ConvToolsService {
     }
 
     private void apply(QrCode q, JsonNode res, PhoneNumber pn, String message) {
-        q.setMetaCode(res.path("code").asText(q.getMetaCode()));
+        String code = res.path("code").asText(q.getMetaCode());
+        if (code == null || code.isBlank()) {
+            // Meta must return the QR code id; without it the code can never be updated or deleted
+            throw new MetaApiException(502, null, null, "WhatsApp did not return a QR code. Please try again", null, null);
+        }
+        q.setMetaCode(code);
         q.setPrefilledMessage(res.path("prefilled_message").asText(message));
         q.setDeepLinkUrl(res.path("deep_link_url").asText(q.getDeepLinkUrl()));
         q.setQrImagePngUrl(res.path("qr_image_url").asText(q.getQrImagePngUrl()));

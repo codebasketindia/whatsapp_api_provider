@@ -90,7 +90,8 @@ public final class SenderDtos {
 
     public record ManualConnectRequest(Long partnerId, @NotBlank @Pattern(regexp = "^[0-9]{5,32}$") String wabaId,
                                        @NotBlank @Pattern(regexp = "^[0-9]{5,32}$") String phoneNumberId,
-                                       @NotBlank @Size(max = 1024) String accessToken,
+                                       @NotBlank @Size(max = 1024) @Pattern(regexp = "^[A-Za-z0-9_\\-|.]+$",
+                                               message = "This is not a valid access token") String accessToken,
                                        @Pattern(regexp = "^$|^[0-9]{6}$", message = "PIN must be 6 digits") String pin,
                                        boolean register) {
     }
