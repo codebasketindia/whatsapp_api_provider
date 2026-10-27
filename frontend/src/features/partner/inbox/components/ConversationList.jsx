@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from 'react-router-dom';
-import { MessagesSquare } from 'lucide-react';
+import { Bot, MessagesSquare } from 'lucide-react';
+import * as aiApi from '../../../../api/endpoints/ai';
+import { aiActiveFor } from '../../ai/components/aiHelpers';
 import * as messagesApi from '../../../../api/endpoints/messages';
 import { Avatar, EmptyState, ErrorState, SearchInput, Select, Skeleton, Switch } from '../../../../components/ui';
 import { useUrlState } from '../../../../hooks/useUrlState';
@@ -20,6 +22,7 @@ export default function ConversationList({ live, className }) {
     placeholderData: (p) => p,
   });
   const rows = q.data?.content || [];
+  const assistant = useQuery({ queryKey: ['partner', 'ai', 'assistant'], queryFn: aiApi.getAssistant, staleTime: 60_000 }).data;
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
       <div className="space-y-2 border-b border-line p-3">
@@ -63,7 +66,15 @@ export default function ConversationList({ live, className }) {
                       <span className="truncate text-xs text-muted">{c.lastMessagePreview || '…'}</span>
                       {c.unreadCount > 0 && <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-semibold text-white">{c.unreadCount}</span>}
                     </span>
-                    {c.windowOpen && <span className="text-[11px] font-medium text-green-700 dark:text-green-400">Can reply freely</span>}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {c.needsHuman && <span className="rounded-full bg-red-600 px-1.5 py-px text-[10px] font-semibold uppercase text-white">Needs you</span>}
+                      {aiActiveFor(assistant, c.senderId, c) && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-px text-[10px] font-semibold text-violet-800 dark:bg-violet-500/20 dark:text-violet-200">
+                          <Bot className="h-3 w-3" aria-hidden /> AI
+                        </span>
+                      )}
+                      {c.windowOpen && <span className="text-[11px] font-medium text-green-700 dark:text-green-400">Can reply freely</span>}
+                    </span>
                   </span>
                 </NavLink>
               </li>

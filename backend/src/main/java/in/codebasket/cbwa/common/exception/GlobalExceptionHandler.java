@@ -80,12 +80,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class, MissingServletRequestPartException.class,
-            HttpMediaTypeNotSupportedException.class})
+            HttpMediaTypeNotSupportedException.class, org.springframework.web.multipart.MultipartException.class})
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(Exception ex) {
         String message = switch (ex) {
             case MissingServletRequestParameterException m -> "Missing parameter: " + m.getParameterName();
             case MissingServletRequestPartException m -> "Missing file/part: " + m.getRequestPartName();
             case MethodArgumentTypeMismatchException m -> "Invalid value for: " + m.getName();
+            case org.springframework.web.multipart.MultipartException m -> "Please upload the file as multipart/form-data";
             default -> ErrorCode.BAD_REQUEST.getDefaultMessage();
         };
         return build(ErrorCode.BAD_REQUEST, message, null, null);

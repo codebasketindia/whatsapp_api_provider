@@ -58,6 +58,13 @@ Plain-language guide for CodeBasket staff. Every money action asks for confirmat
   approval) or **Reject** with a reason. Templates on a partner's own number go straight to Meta.
 - Meta can later **pause** or **disable** a template for low quality — partners are notified automatically.
 
+## AI replies (Settings → AI)
+- Paste the **Anthropic API key** (console.anthropic.com → API keys; add billing credit there), switch **Enabled** on.
+- **Model**: keep `claude-haiku-5-5` (cheapest). **Fee per reply**: what partners pay per AI answer (default ₹0.10).
+  Our real cost is about ₹0.01–0.03 per reply thanks to short answers and prompt caching.
+- **Max output tokens** (400), **history messages** (6) and **max replies per chat per day** (20) keep costs low.
+- Usage across all partners: `GET /api/admin/ai/usage` (same data as the partner Usage tab, with partner names).
+
 ## Reports
 Partner usage, category and country breakdown, revenue (gateway collections, manual top-ups, GST, message
 charges, platform fees) and **Meta reconciliation** (Meta cost vs our charges = profit). Export Excel or PDF.

@@ -36,4 +36,12 @@ public class ConversationWindow extends BaseEntity {
 
     @Column(nullable = false)
     private Instant lastMessageAt;
+
+    /** AI replies switched off for this chat (by the partner or after a handover). */
+    @Column(nullable = false)
+    private boolean aiPaused;
+
+    /** The AI handed this chat to a human; cleared when the partner replies or switches AI back on. */
+    @Column(nullable = false)
+    private boolean needsHuman;
 }

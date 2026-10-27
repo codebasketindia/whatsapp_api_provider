@@ -14,6 +14,7 @@ const TABS = [
   { value: 'wallet', label: 'Wallet' },
   { value: 'rate-limit', label: 'API limits' },
   { value: 'security', label: 'Security' },
+  { value: 'ai', label: 'AI' },
   { value: 'retention', label: 'Data retention' },
 ];
 
@@ -47,6 +48,14 @@ export default function SettingsPage() {
         {tab === 'wallet' && <SettingsGroupForm group="wallet" title="Wallet" />}
         {tab === 'rate-limit' && <SettingsGroupForm group="rate-limit" title="API & login limits" subtitle="Protects the platform from too many requests." />}
         {tab === 'security' && <SettingsGroupForm group="security" title="Security" subtitle="Login protection for all users." confirmMessage="Security changes apply to the next login of every user." />}
+        {tab === 'ai' && (
+          <SettingsGroupForm
+            group="ai"
+            title="AI Assistant"
+            subtitle="Partners can let AI answer customers from their own information. Each AI reply is charged from the partner wallet."
+            confirmMessage="AI changes apply to the next customer message."
+          />
+        )}
         {tab === 'retention' && <SettingsGroupForm group="retention" title="Data retention" subtitle="Old data is cleaned up every night." />}
       </div>
     </>

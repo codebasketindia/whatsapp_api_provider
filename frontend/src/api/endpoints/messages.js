@@ -22,6 +22,9 @@ export const replyToConversation = (senderId, waId, body) =>
   api.post(`/partner/inbox/conversations/${senderId}/${waId}/reply`, body).then(unwrap);
 export const markConversationRead = (senderId, waId, typing = false) =>
   api.post(`/partner/inbox/conversations/${senderId}/${waId}/read`, { typing }).then(unwrap);
+// AI10: switch AI replies on/off for one conversation
+export const setConversationAi = (senderId, waId, paused) =>
+  api.patch(`/partner/inbox/conversations/${senderId}/${waId}/ai`, { paused }).then(unwrap);
 export const getInboxStreamTicket = () => api.post('/partner/inbox/stream-ticket').then(unwrap);
 // IN5: EventSource cannot send Authorization headers, so the stream lives on a public path and uses the IN6 ticket.
 export const inboxStreamPath = '/public/inbox-stream';

@@ -16,6 +16,7 @@ public final class SettingKeys {
     public static final String SECURITY = "SECURITY";
     public static final String STORAGE = "STORAGE";
     public static final String RETENTION = "RETENTION";
+    public static final String AI = "AI";
 
     public static final String CHARGE_ON = "charge_on";
     public static final String CHARGE_FREE_UTILITY_IN_WINDOW = "charge_free_utility_in_window";

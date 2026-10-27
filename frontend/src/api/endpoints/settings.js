@@ -1,7 +1,7 @@
 import { api, toFormData, unwrap } from '../axios';
 
 /** Groups: company, gst, payment-gateway, smtp, charging, wallet, rate-limit, security (ST1–ST5). */
-export const SETTINGS_GROUPS = ['company', 'gst', 'payment-gateway', 'smtp', 'charging', 'wallet', 'rate-limit', 'security'];
+export const SETTINGS_GROUPS = ['company', 'gst', 'payment-gateway', 'smtp', 'charging', 'wallet', 'rate-limit', 'security', 'ai'];
 
 export const getSettings = (group) => api.get(`/admin/settings/${group}`).then(unwrap);
 export const updateSettings = (group, body) => api.put(`/admin/settings/${group}`, body).then(unwrap);

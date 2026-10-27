@@ -49,7 +49,34 @@ schedule. Watch live progress; pause or cancel any time; download the report. Fa
   Contacts → Opt-outs). You can block numbers from the number's Block list.
 - **Inbox**: see replies, photos and documents from customers and answer them.
 
-## 8. Developers (API)
+## 8. AI Assistant (automatic replies)
+**AI Assistant** answers your customers' WhatsApp messages for you — **only from the information you give it**.
+1. **Knowledge** tab → *Add*: one item per topic (menu & prices, timings, address, delivery areas, offers, FAQ…).
+   Attach a photo, video or PDF to an item (e.g. the menu card) and the AI can send it when it is relevant.
+2. **Setup** tab: business name, extra instructions (e.g. "always mention free delivery above ₹500"), language
+   (Auto / English / Hindi / Hinglish), tone, **fallback message** (sent when the answer is not in your knowledge,
+   e.g. "Our team will reply shortly") and **handover words** (e.g. *agent*, *human*, *complaint*). Choose all numbers
+   or only some, then switch it **On**.
+3. **Test** tab: chat with your AI before customers do (free, 100 tests a day).
+
+How it behaves:
+- It never makes up prices, offers or policies. If the answer is not in your knowledge it sends your fallback
+  message, **stops replying in that chat** and marks it **Needs you** in the Inbox. Switch *AI replies* back on in
+  that chat when you are done.
+- It replies only inside the 24-hour window (free from Meta) and ignores STOP/START words.
+- Each AI reply costs a small fee (shown on the Setup tab) from your wallet. Low balance → the AI stays quiet and
+  the chat is marked for you. **Usage** tab shows every reply, fallback and cost.
+
+## 9. Scheduled messages
+**Scheduled** → *New scheduled message*: choose number and customer, pick date & time (India time, 1 minute to
+90 days ahead) and write the message — text, photo, video, document or an approved template. You can also schedule
+from a chat (clock button in the composer).
+- **Edit**, **Change time** (reschedule), **Send now** or **Cancel** while it is still *Upcoming*.
+- Money is taken only when it is actually sent. Normal text/photo messages need the customer's 24-hour window to be
+  open at that time — otherwise it fails with a clear reason; use a template for anything later.
+- Scheduled **campaigns** can also be moved: Campaign → *Change time*.
+
+## 10. Developers (API)
 **Developer** page: create API keys (the secret is shown once — save it), add your server IPs for extra safety,
 set a webhook URL to receive delivery status and incoming messages, send a test event and copy code samples in
 cURL, PHP, Node.js, Java and Python. Full reference: `docs/api-guide.md`.

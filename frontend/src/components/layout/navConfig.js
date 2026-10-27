@@ -1,7 +1,7 @@
 import {
   BarChart3, Bell, Building2, ClipboardList, Code2, Contact, CreditCard, FileText, Home, Inbox, LayoutDashboard,
   Megaphone, MessageSquare, MessagesSquare, MoreHorizontal, Package, Phone, ReceiptIndianRupee, ScrollText, Send,
-  Settings, ShieldCheck, Smartphone, Tags, Users, Wallet, Wrench,
+  Settings, ShieldCheck, Smartphone, Tags, Users, Wallet, Wrench, Bot, CalendarClock,
 } from 'lucide-react';
 
 /** Admin sidebar (filtered by permission). `end` = exact match. */
@@ -55,6 +55,8 @@ export const PARTNER_NAV = [
       { to: '/partner', label: 'Home', icon: Home, end: true },
       { to: '/partner/send', label: 'Send message', icon: Send },
       { to: '/partner/inbox', label: 'Inbox', icon: Inbox },
+      { to: '/partner/ai', label: 'AI Assistant', icon: Bot },
+      { to: '/partner/scheduled', label: 'Scheduled', icon: CalendarClock },
       { to: '/partner/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/partner/wallet', label: 'Wallet', icon: Wallet },
     ],

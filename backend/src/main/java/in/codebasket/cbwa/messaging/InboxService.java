@@ -48,7 +48,8 @@ public class InboxService {
     }
 
     public record ConversationDto(Long senderId, String waId, ContactRef contact, String contactName, String lastMessagePreview,
-                                  Instant lastMessageAt, int unreadCount, boolean windowOpen, Instant windowExpiresAt) {
+                                  Instant lastMessageAt, int unreadCount, boolean windowOpen, Instant windowExpiresAt,
+                                  boolean aiPaused, boolean needsHuman) {
     }
 
     public record ConversationMessages(List<MessageDto> items, boolean hasMore, boolean windowOpen, Instant windowExpiresAt) {
@@ -88,7 +89,7 @@ public class InboxService {
             boolean open = w.getExpiresAt() != null && w.getExpiresAt().isAfter(now);
             return new ConversationDto(w.getPhoneNumberId(), w.getWaId(), c == null ? null : new ContactRef(c.getId(), c.getName()),
                     c != null && c.getName() != null ? c.getName() : w.getContactName(), w.getLastMessagePreview(), w.getLastMessageAt(),
-                    w.getUnreadCount(), open, open ? w.getExpiresAt() : null);
+                    w.getUnreadCount(), open, open ? w.getExpiresAt() : null, w.isAiPaused(), w.isNeedsHuman());
         });
     }
 
@@ -115,7 +116,12 @@ public class InboxService {
         SendMessageRequest r = new SendMessageRequest(senderId, null, waId, req.type(), req.replyToUid(), req.replyToWamid(),
                 req.text(), req.media(), req.location(), req.contacts(), req.reaction(), req.interactive(), req.template(),
                 req.clientReference());
-        return messagingService.send(partnerId, r, MessageSource.INBOX);
+        MessageDto sent = messagingService.send(partnerId, r, MessageSource.INBOX);
+        windowRepository.findByPhoneNumberIdAndWaId(senderId, waId).filter(ConversationWindow::isNeedsHuman).ifPresent(w -> {
+            w.setNeedsHuman(false);
+            windowRepository.save(w);
+        });
+        return sent;
     }
 
     /** Not transactional on purpose: the Meta call must not run while the window row is locked. */

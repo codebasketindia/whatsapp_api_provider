@@ -20,5 +20,6 @@ export function useWindowStatus(senderId, waId) {
     open: Boolean(conv?.windowOpen),
     expiresAt: conv?.windowExpiresAt || null,
     known: q.isSuccess,
+    conversation: conv || null,
   };
 }

@@ -31,6 +31,7 @@
         <logstash.version>8.0</logstash.version>
         <ulid.version>5.2.3</ulid.version>
         <wiremock.version>3.9.2</wiremock.version>
+        <anthropic.version>3.2.0</anthropic.version>
     </properties>
 
     <dependencies>
@@ -62,6 +63,7 @@
         <dependency><groupId>com.google.zxing</groupId><artifactId>javase</artifactId><version>${zxing.version}</version></dependency>
         <dependency><groupId>net.logstash.logback</groupId><artifactId>logstash-logback-encoder</artifactId><version>${logstash.version}</version></dependency>
         <dependency><groupId>com.github.f4b6a3</groupId><artifactId>ulid-creator</artifactId><version>${ulid.version}</version></dependency>
+        <dependency><groupId>com.anthropic</groupId><artifactId>anthropic-java</artifactId><version>${anthropic.version}</version></dependency>
         <dependency><groupId>org.apache.commons</groupId><artifactId>commons-csv</artifactId><version>1.12.0</version></dependency>
 
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>

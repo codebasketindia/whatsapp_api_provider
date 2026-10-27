@@ -34,11 +34,18 @@ import java.util.Set;
 public class SettingsController {
 
     /** API group names -> DB group codes. */
-    public static final Map<String, String> GROUPS = Map.of(
-            "company", SettingKeys.COMPANY, "gst", SettingKeys.GST, "payment-gateway", SettingKeys.PAYMENT,
-            "smtp", SettingKeys.SMTP, "charging", SettingKeys.CHARGING, "wallet", SettingKeys.WALLET,
-            "rate-limit", SettingKeys.RATE_LIMIT, "security", SettingKeys.SECURITY, "storage", SettingKeys.STORAGE,
-            "retention", SettingKeys.RETENTION);
+    public static final Map<String, String> GROUPS = Map.ofEntries(
+            Map.entry("company", SettingKeys.COMPANY),
+            Map.entry("gst", SettingKeys.GST),
+            Map.entry("payment-gateway", SettingKeys.PAYMENT),
+            Map.entry("smtp", SettingKeys.SMTP),
+            Map.entry("charging", SettingKeys.CHARGING),
+            Map.entry("wallet", SettingKeys.WALLET),
+            Map.entry("rate-limit", SettingKeys.RATE_LIMIT),
+            Map.entry("security", SettingKeys.SECURITY),
+            Map.entry("storage", SettingKeys.STORAGE),
+            Map.entry("retention", SettingKeys.RETENTION),
+            Map.entry("ai", SettingKeys.AI));
 
     private final SettingsService settings;
     private final FileStorageService storage;

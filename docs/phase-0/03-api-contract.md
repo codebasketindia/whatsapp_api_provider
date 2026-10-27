@@ -435,6 +435,53 @@ Headers: `X-API-KEY`, `X-API-SECRET`, optional `Idempotency-Key` (24 h) on POSTs
 ```
 Events: `message.status`, `message.inbound` (`{from, senderId, type, text|media{url (signed, 24 h)}, contextId}`), `template.status`, `sender.status`, `wallet.low_balance`, `test.ping`.
 
+### 4.19 AI Assistant (partner) — v1.3
+Every partner has one AI assistant that answers customer replies **only from the partner's own knowledge**.
+Model: Claude Haiku 5.5 (cheapest), low effort, prompt caching, last 6 messages of history, short replies.
+Runs only inside the 24-hour window (free from Meta). Outside the knowledge → partner's fallback message and the
+chat is handed to a human (AI paused for that chat). Each AI reply debits the admin-set AI fee from the wallet
+(wallet ref type `AI_REPLY`); insufficient balance → no AI call, chat handed to a human.
+
+**AiAssistantDto** `{ enabled, senderIds: [Long] | null (null = all my numbers), businessName, instructions, language: AUTO|ENGLISH|HINDI|HINGLISH, tone: FRIENDLY|PROFESSIONAL|SHORT, fallbackMessage, handoverKeywords: [String], maxRepliesPerChatPerDay, platformEnabled (read-only: admin switched AI on and set a key), feePerReply (read-only) }`
+**KnowledgeItemDto** `{ id, title, content, media?: { fileUid, url, mimeType, filename, type: image|video|document }, active, sortOrder, updatedAt }`
+**AiUsageDto** `{ id, createdAt, waId, senderId, outcome: REPLIED|FALLBACK|HANDOVER|SKIPPED|ERROR, reason, inboundPreview, replyPreview, inputTokens, outputTokens, cacheReadTokens, charged }`
+
+| # | Method | URL | Role | Request | Response `data` | Errors |
+|---|---|---|---|---|---|---|
+| AI1 | GET | /partner/ai/assistant | PTR | — | AiAssistantDto | |
+| AI2 | PUT | /partner/ai/assistant | PTR | AiAssistantDto (editable fields) | AiAssistantDto | VALIDATION_FAILED |
+| AI3 | GET | /partner/ai/knowledge | PTR | `?search` | `[KnowledgeItemDto]` (max 200) | |
+| AI4 | POST | /partner/ai/knowledge | PTR | `{title (≤120), content (≤4000), active, sortOrder, fileUid?}` | KnowledgeItemDto | VALIDATION_FAILED |
+| AI5 | PUT | /partner/ai/knowledge/{id} | PTR | same as AI4 (`fileUid: null` removes media) | KnowledgeItemDto | NOT_FOUND |
+| AI6 | DELETE | /partner/ai/knowledge/{id} | PTR | — | null | NOT_FOUND |
+| AI7 | POST | /partner/ai/knowledge/media | PTR | multipart `file` (jpg/png ≤5MB, mp4 ≤16MB, pdf/doc ≤16MB) | `{fileUid, url, mimeType, filename, type}` | FILE_* |
+| AI8 | POST | /partner/ai/test | PTR | `{message, history: [{role: customer|business, text}]}` | `{reply, attachments: [KnowledgeItemDto], handover, reason, inputTokens, outputTokens}` (not charged; 100 tests/day) | AI_NOT_AVAILABLE (503), RATE_LIMITED |
+| AI9 | GET | /partner/ai/usage | PTR | `?from&to&outcome&page&size` | `{summary: {replies, fallbacks, handovers, charged}, page: Page<AiUsageDto>}` | |
+| AI10 | PATCH | /partner/inbox/conversations/{senderId}/{waId}/ai | PTR | `{paused: boolean}` | `{aiPaused}` | NOT_FOUND |
+| AI11 | GET | /admin/ai/usage | ADM:REPORT_VIEW | `?partnerId&from&to&page` | same as AI9 + `partner` on rows | |
+
+Admin settings group `ai` (ST1/ST2): `enabled`, `anthropicApiKey` (secret, replace-only → `anthropicApiKeySet`), `model` (default `claude-haiku-5-5`),
+`feePerReply` (₹ debited per AI reply, default 0.10), `maxOutputTokens` (default 400), `historyMessages` (default 6),
+`maxRepliesPerChatPerDay` (default 20, partner can lower it).
+IN1 conversation rows add `aiPaused`, `needsHuman`; MessageDto `source` may be `AI` or `SCHEDULED`.
+
+### 4.20 Scheduled messages (partner) — v1.3
+**ScheduledMessageDto** `{ uid, sender: {id, displayPhoneNumber}, to, contactName?, type, preview, request (SendMessageRequest body), scheduledAt, status: SCHEDULED|SENDING|SENT|FAILED|CANCELLED, messageUid?, error?, windowOpenAtSchedule: boolean, createdAt, updatedAt }`
+Rules: `scheduledAt` between now+1 minute and now+90 days. Free-form (non-template) messages are only delivered if the
+customer's 24-hour window is open at send time — otherwise the item FAILS with `WINDOW_CLOSED` (the create/update response
+sets `windowOpenAtSchedule:false` as a warning). Price is held at send time, not at scheduling. Edit/reschedule/cancel only while SCHEDULED.
+
+| # | Method | URL | Role | Request | Response `data` | Errors |
+|---|---|---|---|---|---|---|
+| SC1 | GET | /partner/scheduled-messages | PTR | `?status&senderId&waId&from&to&page&size` | Page<ScheduledMessageDto> | |
+| SC2 | POST | /partner/scheduled-messages | PTR | `{scheduledAt (ISO), message: SendMessageRequest}` (`senderId`, `to` inside message) | ScheduledMessageDto | VALIDATION_FAILED, SENDER_NOT_AVAILABLE, TEMPLATE_NOT_APPROVED, RECIPIENT_INVALID |
+| SC3 | GET | /partner/scheduled-messages/{uid} | PTR | — | ScheduledMessageDto | NOT_FOUND |
+| SC4 | PUT | /partner/scheduled-messages/{uid} | PTR | same as SC2 | ScheduledMessageDto | CONFLICT (not SCHEDULED) |
+| SC5 | POST | /partner/scheduled-messages/{uid}/reschedule | PTR | `{scheduledAt}` | ScheduledMessageDto | CONFLICT |
+| SC6 | POST | /partner/scheduled-messages/{uid}/cancel | PTR | — | ScheduledMessageDto | CONFLICT |
+| SC7 | POST | /partner/scheduled-messages/{uid}/send-now | PTR | — | ScheduledMessageDto (status after the attempt) | CONFLICT |
+| CP14 | POST | /partner/campaigns/{id}/reschedule | PTR | `{scheduledAt}` | CampaignDto | CAMPAIGN_INVALID_STATE (only SCHEDULED) |
+
 ### 4.18 System
 | GET | /actuator/health | PUB | `{status:"UP"}` (details only on localhost) |
 | GET | /swagger-ui.html, /v3/api-docs | PUB in dev; prod: admin-only via Nginx basic auth or disabled by `CBWA_SWAGGER_ENABLED` |
@@ -477,3 +524,5 @@ Events: `message.status`, `message.inbound` (`{from, senderId, type, text|media{
   the account email. `users.mobile` is required (staff S7/S8, profile A9, partner P2/P4) and unique across all users
   (field error `mobile`: "This mobile number is already registered"); stored as E.164 digits (919876543210).
   New env `CBWA_SEED_ADMIN_MOBILE`. AUTH_INVALID_CREDENTIALS message: "Mobile number or password is incorrect".
+- v1.3 — AI Assistant (§4.19: AI1–AI11, settings group `ai`, error `AI_NOT_AVAILABLE` 503) and scheduled messages
+  (§4.20: SC1–SC7, campaign reschedule CP14). New message sources `AI`, `SCHEDULED`; wallet ref type `AI_REPLY`.

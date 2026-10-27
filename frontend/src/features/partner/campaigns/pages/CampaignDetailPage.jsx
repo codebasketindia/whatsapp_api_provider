@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Download, Pause, Pencil, Play, Trash2, XCircle } from 'lucide-react';
+import { CalendarClock, Download, Pause, Pencil, Play, Trash2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as campaignsApi from '../../../../api/endpoints/campaigns';
 import { getErrorMessage } from '../../../../api/axios';
@@ -13,6 +13,7 @@ import { useUrlState } from '../../../../hooks/useUrlState';
 import { formatDateTime, formatMoney, formatNumber, formatPhone, formatPercent } from '../../../../lib/format';
 import { CAMPAIGN_STATUS_LABEL, PAUSE_REASON_LABEL, SKIP_REASON_LABEL } from '../components/schedule';
 import { campaignProgress } from './MyCampaignsPage';
+import ScheduleTimeDialog from '../../scheduled/components/ScheduleTimeDialog';
 
 const RECIPIENT_STATUSES = ['PENDING', 'SKIPPED', 'QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED'];
 
@@ -80,6 +81,7 @@ export default function CampaignDetailPage() {
   const pause = useMutation({ mutationFn: () => campaignsApi.pauseCampaign(id), ...after('Campaign paused') });
   const resume = useMutation({ mutationFn: () => campaignsApi.resumeCampaign(id), ...after('Campaign resumed') });
   const cancel = useMutation({ mutationFn: () => campaignsApi.cancelCampaign(id), ...after('Campaign cancelled') });
+  const reschedule = useMutation({ mutationFn: (iso) => campaignsApi.rescheduleCampaign(id, iso), ...after('Campaign time changed') });
   const del = useMutation({
     mutationFn: () => campaignsApi.deleteCampaign(id),
     onSuccess: () => {
@@ -121,6 +123,7 @@ export default function CampaignDetailPage() {
             {status === 'DRAFT' && <Button variant="danger-outline" leftIcon={Trash2} onClick={() => setConfirm('delete')}>Delete</Button>}
             {['RUNNING', 'SCHEDULED'].includes(status) && <Button variant="secondary" leftIcon={Pause} onClick={() => pause.mutate()} loading={pause.isPending}>Pause</Button>}
             {status === 'PAUSED' && <Button leftIcon={Play} onClick={() => setConfirm('resume')}>Resume</Button>}
+            {status === 'SCHEDULED' && <Button variant="secondary" leftIcon={CalendarClock} onClick={() => setConfirm('reschedule')}>Change time</Button>}
             {['RUNNING', 'SCHEDULED', 'PAUSED'].includes(status) && <Button variant="danger-outline" leftIcon={XCircle} onClick={() => setConfirm('cancel')}>Cancel</Button>}
             {status !== 'DRAFT' && (
               <>
@@ -194,6 +197,16 @@ export default function CampaignDetailPage() {
         message="People who have not been sent the message yet will be skipped. This cannot be undone."
         confirmWord="CANCEL"
         confirmLabel="Cancel campaign"
+      />
+      <ScheduleTimeDialog
+        open={confirm === 'reschedule'}
+        onClose={() => setConfirm(null)}
+        title="Change campaign time"
+        description="The campaign starts automatically at the new time (India time)."
+        initialIso={c.scheduledAt}
+        submitLabel="Save new time"
+        loading={reschedule.isPending}
+        onSubmit={(iso) => reschedule.mutate(iso)}
       />
       <ConfirmDialog
         open={confirm === 'delete'}

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { FileText, MapPin } from 'lucide-react';
+import { Bot, CalendarClock, FileText, MapPin } from 'lucide-react';
 import { fetchObjectUrl } from '../../../../api/axios';
 import { toApiPath } from '../../../../api/endpoints/files';
 import { MessageTicks } from '../../../../components/ui';
 import { cn } from '../../../../lib/cn';
 import { formatTime } from '../../../../lib/format';
 
-function useProtectedUrl(url) {
+export function useProtectedUrl(url) {
   const [obj, setObj] = useState(null);
   useEffect(() => {
     if (!url) return undefined;
@@ -50,6 +50,12 @@ export default function ChatBubble({ message: m }) {
           out ? 'rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]' : 'rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]',
         )}
       >
+        {(m.source === 'AI' || m.source === 'SCHEDULED') && (
+          <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide opacity-60">
+            {m.source === 'AI' ? <Bot className="h-3 w-3" aria-hidden /> : <CalendarClock className="h-3 w-3" aria-hidden />}
+            {m.source === 'AI' ? 'AI' : 'Scheduled'}
+          </p>
+        )}
         {m.template?.name && <p className="mb-1 text-[11px] font-medium uppercase tracking-wide opacity-60">Template · {m.template.name}</p>}
         {(type === 'IMAGE' || type === 'STICKER') && (url ? <img src={url} alt="" className="mb-1 max-h-72 rounded-md" /> : <div className="mb-1 h-40 w-56 animate-pulse rounded-md bg-black/10" />)}
         {type === 'VIDEO' && url && <video src={url} controls className="mb-1 max-h-72 rounded-md" />}

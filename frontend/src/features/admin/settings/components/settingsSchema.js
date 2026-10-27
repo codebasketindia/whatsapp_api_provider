@@ -65,6 +65,15 @@ export const SETTINGS_FIELDS = {
     { key: 'maxLoginAttempts', label: 'Wrong password attempts before lock', type: 'number', min: 1 },
     { key: 'lockoutMinutes', label: 'Lock duration (minutes)', type: 'number', min: 1 },
   ],
+  ai: [
+    { key: 'enabled', label: 'Let partners use the AI Assistant', type: 'switch', hint: 'Off = no AI replies are sent for any partner.' },
+    { key: 'anthropicApiKey', label: 'Anthropic API key', type: 'secret' },
+    { key: 'model', label: 'AI model', type: 'text', placeholder: 'claude-haiku-5-5', hint: 'claude-haiku-5-5 is the cheapest and fast enough for customer replies.' },
+    { key: 'feePerReply', label: 'Fee per AI reply (₹)', type: 'number', hint: 'Debited from the partner wallet for every AI reply sent.' },
+    { key: 'maxOutputTokens', label: 'Longest reply (output tokens)', type: 'number', min: 50, hint: 'Lower = shorter and cheaper replies. 400 ≈ 300 words.' },
+    { key: 'historyMessages', label: 'Previous messages the AI reads', type: 'number', min: 0, max: 30, hint: 'Fewer = cheaper. 6 is enough for most chats.' },
+    { key: 'maxRepliesPerChatPerDay', label: 'Max AI replies per chat per day', type: 'number', min: 1, hint: 'Partners can set a lower limit.' },
+  ],
   retention: [
     { key: 'messageContentDays', label: 'Keep message content for (days)', type: 'number', min: 1, hint: 'Older message text is removed; delivery records and charges stay.' },
     { key: 'mediaDays', label: 'Keep received media for (days)', type: 'number', min: 1 },

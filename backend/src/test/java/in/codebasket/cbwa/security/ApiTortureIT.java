@@ -269,9 +269,9 @@ class ApiTortureIT extends AbstractIntegrationTest {
     private void check(TortureFixtures.World w, Role role, Route route, Map<String, String> vars, String variant, int status, String body) {
         String p = route.pattern();
         boolean ok2xx = status >= 200 && status < 300;
-        // Contracted upstream/config statuses: 502 META_API_ERROR (Meta failed), 503 *_NOT_CONFIGURED.
+        // Contracted upstream/config statuses: 502 META_API_ERROR (Meta failed), 503 *_NOT_CONFIGURED / AI_NOT_AVAILABLE.
         boolean contracted = (status == 502 && body.contains("\"META_API_ERROR\""))
-                || (status == 503 && body.matches("(?s).*\"code\":\"[A-Z_]+_NOT_CONFIGURED\".*"));
+                || (status == 503 && body.matches("(?s).*\"code\":\"([A-Z_]+_NOT_CONFIGURED|AI_NOT_AVAILABLE)\".*"));
         if (status >= 500 && !contracted) {
             fail(role, route, variant, status, body);
         }

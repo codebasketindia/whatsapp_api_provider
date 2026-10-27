@@ -483,6 +483,26 @@ public class CampaignService {
         return toDto(c, false);
     }
 
+    /** CP14: moves a scheduled campaign to another time (1 minute to 90 days ahead). */
+    @Transactional
+    public CampaignDto reschedule(Long partnerId, Long id, Instant scheduleAt) {
+        Campaign c = lockOwned(partnerId, id);
+        requireStatus(c, CampaignStatus.SCHEDULED);
+        Instant now = Instant.now();
+        if (scheduleAt == null || scheduleAt.isBefore(now.plusSeconds(55))) {
+            throw AppException.field("scheduledAt", "Choose a time at least 1 minute from now");
+        }
+        if (scheduleAt.isAfter(now.plus(java.time.Duration.ofDays(90)))) {
+            throw AppException.field("scheduledAt", "You can schedule up to 90 days ahead");
+        }
+        Instant old = c.getScheduledAt();
+        c.setScheduledAt(scheduleAt);
+        campaignRepository.save(c);
+        auditService.log("CAMPAIGN_RESCHEDULE", "CAMPAIGN", c.getUid(), old == null ? null : Map.of("scheduledAt", old.toString()),
+                Map.of("scheduledAt", scheduleAt.toString()), partnerId);
+        return toDto(c, false);
+    }
+
     /** Estimate for the recipients that are still PENDING (used at launch and resume). */
     CostEstimateDto estimatePending(Long partnerId, Campaign c, PhoneNumber sender, Template template) {
         Map<String, CountryBucket> buckets = new HashMap<>();

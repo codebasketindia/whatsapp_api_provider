@@ -72,6 +72,8 @@ const MyReportsPage = lazy(() => import('./features/partner/reports/pages/MyRepo
 const DeveloperPage = lazy(() => import('./features/partner/developer/pages/DeveloperPage'));
 const SupportPage = lazy(() => import('./features/partner/support/pages/SupportPage'));
 const MorePage = lazy(() => import('./features/partner/more/pages/MorePage'));
+const AiAssistantPage = lazy(() => import('./features/partner/ai/pages/AiAssistantPage'));
+const ScheduledPage = lazy(() => import('./features/partner/scheduled/pages/ScheduledPage'));
 
 /** Wraps an admin page with its permission check (403 when missing). */
 const perm = (permission, element) => (
@@ -178,6 +180,8 @@ export const routes = [
           { path: 'notifications', element: <NotificationsPage /> },
           { path: 'support', element: <SupportPage /> },
           { path: 'more', element: <MorePage /> },
+          { path: 'ai', element: <AiAssistantPage /> },
+          { path: 'scheduled', element: <ScheduledPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

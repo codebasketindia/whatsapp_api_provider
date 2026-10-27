@@ -56,6 +56,7 @@ public enum ErrorCode {
     IP_NOT_WHITELISTED(HttpStatus.FORBIDDEN, "Requests from this IP address are not allowed"),
     PARTNER_SUSPENDED(HttpStatus.FORBIDDEN, "This account is suspended"),
     WEBHOOK_SIGNATURE_INVALID(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"),
+    AI_NOT_AVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI replies are not available right now"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong. Please try again");
 
     private final HttpStatus status;

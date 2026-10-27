@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 /** CP1-CP11 (partner). */
@@ -78,6 +79,14 @@ public class CampaignController {
     @PostMapping("/{id}/resume")
     public ApiResponse<CampaignDto> resume(@PathVariable Long id) {
         return ApiResponse.ok(controlService.resume(pid(), id), "Campaign resumed");
+    }
+
+    public record RescheduleRequest(@jakarta.validation.constraints.NotNull Instant scheduledAt) {
+    }
+
+    @PostMapping("/{id}/reschedule")
+    public ApiResponse<CampaignDto> reschedule(@PathVariable Long id, @jakarta.validation.Valid @RequestBody RescheduleRequest req) {
+        return ApiResponse.ok(campaignService.reschedule(pid(), id, req.scheduledAt()), "Campaign time changed");
     }
 
     @PostMapping("/{id}/cancel")

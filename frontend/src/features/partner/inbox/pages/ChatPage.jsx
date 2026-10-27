@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, FileText, Send } from 'lucide-react';
+import { ArrowLeft, Bot, CalendarClock, Clock, FileText, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as messagesApi from '../../../../api/endpoints/messages';
 import * as templatesApi from '../../../../api/endpoints/templates';
+import * as aiApi from '../../../../api/endpoints/ai';
+import * as scheduledApi from '../../../../api/endpoints/scheduled';
 import { getErrorMessage } from '../../../../api/axios';
-import { Alert, Avatar, Button, EmptyState, ErrorState, Modal, Select, Skeleton, Spinner, Textarea } from '../../../../components/ui';
+import { Alert, Avatar, Button, EmptyState, ErrorState, IconButton, Modal, Select, Skeleton, Spinner, Switch, Textarea } from '../../../../components/ui';
 import { buildTemplatePayload, templateValuesComplete } from '../../../../components/whatsapp/TemplateBuilder';
 import { useIsDesktop } from '../../../../hooks/useMediaQuery';
-import { formatPhone, humanize } from '../../../../lib/format';
+import { formatDateTime, formatPhone, humanize } from '../../../../lib/format';
 import ConversationList from '../components/ConversationList';
 import ChatBubble from '../components/ChatBubble';
 import { useInboxStream } from '../components/useInboxStream';
@@ -19,6 +21,9 @@ import TemplateFill from '../../common/TemplateFill';
 import MessageComposer from '../../common/MessageComposer';
 import { EMPTY_COMPOSER, composerToRequest, composerValid } from '../../common/composer';
 import { LiveBadge } from './InboxPage';
+import ScheduleTimeDialog from '../../scheduled/components/ScheduleTimeDialog';
+import { WindowNotice } from '../../scheduled/components/ScheduledMessageForm';
+import { aiActiveFor } from '../../ai/components/aiHelpers';
 
 function timeLeft(expiresAt) {
   if (!expiresAt) return '';
@@ -29,7 +34,7 @@ function timeLeft(expiresAt) {
   return h ? `${h} h ${m} min left` : `${m} min left`;
 }
 
-function TemplateModal({ open, onClose, sender, waId, onSent }) {
+function TemplateModal({ open, onClose, sender, waId, onSent, onSchedule }) {
   const [templateId, setTemplateId] = useState('');
   const [values, setValues] = useState({});
   const q = useQuery({
@@ -59,6 +64,17 @@ function TemplateModal({ open, onClose, sender, waId, onSent }) {
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="outline"
+            leftIcon={CalendarClock}
+            disabled={!t || !templateValuesComplete(t, values)}
+            onClick={() => {
+              onSchedule({ type: 'template', template: buildTemplatePayload(t, values) });
+              onClose();
+            }}
+          >
+            Schedule
+          </Button>
           <Button onClick={() => m.mutate()} loading={m.isPending} disabled={!t || !templateValuesComplete(t, values)}>Send</Button>
         </>
       }
@@ -90,7 +106,12 @@ export default function ChatPage() {
   const [advanced, setAdvanced] = useState(false);
   const [composer, setComposer] = useState(EMPTY_COMPOSER);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [scheduleBody, setScheduleBody] = useState(null);
   const bottomRef = useRef(null);
+  const assistant = useQuery({ queryKey: ['partner', 'ai', 'assistant'], queryFn: aiApi.getAssistant, staleTime: 60_000 }).data;
+  const conv = win.conversation || {};
+  const aiCovered = Boolean(assistant?.enabled && assistant?.platformEnabled && aiActiveFor(assistant, senderId, {}));
+  const aiOn = aiActiveFor(assistant, senderId, conv);
 
   const msgs = useInfiniteQuery({
     queryKey: ['partner', 'inbox', 'messages', senderId, waId],
@@ -137,6 +158,29 @@ export default function ChatPage() {
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
+  const toggleAi = useMutation({
+    mutationFn: (on) => messagesApi.setConversationAi(senderId, waId, !on),
+    onSuccess: (res) => {
+      toast.success(res?.aiPaused ? 'AI replies are off for this chat' : 'AI replies are on for this chat');
+      qc.invalidateQueries({ queryKey: ['partner', 'inbox', 'conversations'] });
+      qc.invalidateQueries({ queryKey: ['partner', 'inbox', 'window', senderId, waId] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+  const schedule = useMutation({
+    mutationFn: (iso) => scheduledApi.createScheduled({ scheduledAt: iso, message: { senderId, to: waId, ...scheduleBody } }),
+    onSuccess: (res) => {
+      toast.success(`Scheduled for ${formatDateTime(res?.scheduledAt)}`);
+      if (res?.windowOpenAtSchedule === false && scheduleBody?.type !== 'template') toast('The chat window may be closed at that time — it will fail unless the customer messages you.', { icon: '⚠️' });
+      setScheduleBody(null);
+      setText('');
+      setComposer(EMPTY_COMPOSER);
+      setAdvanced(false);
+      qc.invalidateQueries({ queryKey: ['partner', 'scheduled'] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   const sendText = () => {
     if (!text.trim()) return;
     reply.mutate({ type: 'text', text: { body: text.trim(), previewUrl: true } });
@@ -164,6 +208,24 @@ export default function ChatPage() {
           <Clock className="h-3.5 w-3.5" /> {win.loading ? '…' : open ? timeLeft(win.expiresAt) : 'Window closed'}
         </span>
       </div>
+      {(aiCovered || conv.needsHuman) && (
+        <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-3 py-1.5">
+          <span className="flex min-w-0 items-center gap-1.5 text-sm">
+            <Bot className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden />
+            <label htmlFor="chat-ai-switch" className="truncate text-ink">AI replies: {aiOn ? 'On' : 'Off'}</label>
+            {conv.needsHuman && <span className="shrink-0 rounded-full bg-red-600 px-1.5 py-px text-[10px] font-semibold uppercase text-white">Needs you</span>}
+          </span>
+          {aiCovered && (
+            <Switch
+              checked={aiOn}
+              onChange={(v) => toggleAi.mutate(v)}
+              disabled={toggleAi.isPending || win.loading}
+              className="min-h-0"
+              id="chat-ai-switch"
+            />
+          )}
+        </div>
+      )}
       <div className="wa-wallpaper min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {msgs.hasNextPage && (
           <div className="flex justify-center">
@@ -188,6 +250,7 @@ export default function ChatPage() {
               <MessageComposer senderId={senderId} value={composer} onChange={setComposer} compact />
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setAdvanced(false)}>Back to text</Button>
+                <Button variant="outline" leftIcon={CalendarClock} onClick={() => setScheduleBody(composerToRequest(composer))} disabled={!composerValid(composer)}>Schedule</Button>
                 <Button leftIcon={Send} onClick={() => reply.mutate(composerToRequest(composer))} loading={reply.isPending} disabled={!composerValid(composer)}>Send</Button>
               </div>
             </div>
@@ -209,6 +272,13 @@ export default function ChatPage() {
                 placeholder="Type a message"
               />
               <Button variant="ghost" onClick={() => setAdvanced(true)} aria-label="Attach file or buttons">More</Button>
+              <IconButton
+                icon={CalendarClock}
+                label="Schedule this message"
+                variant="secondary"
+                disabled={!text.trim()}
+                onClick={() => setScheduleBody({ type: 'text', text: { body: text.trim(), previewUrl: true } })}
+              />
               <Button leftIcon={Send} onClick={sendText} loading={reply.isPending} disabled={!text.trim()} aria-label="Send">
                 {desktop ? 'Send' : ''}
               </Button>
@@ -239,7 +309,17 @@ export default function ChatPage() {
         {desktop && <ConversationList live={live} className="border-r border-line" />}
         {chat}
       </div>
-      <TemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} sender={sender} waId={waId} onSent={refresh} />
+      <TemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} sender={sender} waId={waId} onSent={refresh} onSchedule={setScheduleBody} />
+      <ScheduleTimeDialog
+        open={Boolean(scheduleBody)}
+        onClose={() => setScheduleBody(null)}
+        title="Schedule this message"
+        description={`It is sent to ${contactName || formatPhone(waId)} automatically at this time.`}
+        submitLabel="Schedule"
+        loading={schedule.isPending}
+        onSubmit={(iso) => schedule.mutate(iso)}
+        notice={(iso) => <WindowNotice win={win} iso={iso} freeForm={scheduleBody?.type !== 'template'} />}
+      />
     </>
   );
 }

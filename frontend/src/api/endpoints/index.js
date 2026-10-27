@@ -16,3 +16,5 @@ export * as campaignsApi from './campaigns';
 export * as developerApi from './developer';
 export * as dashboardApi from './dashboard';
 export * as settingsApi from './settings';
+export * as aiApi from './ai';
+export * as scheduledApi from './scheduled';

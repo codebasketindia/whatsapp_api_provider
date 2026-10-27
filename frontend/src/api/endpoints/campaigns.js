@@ -17,6 +17,8 @@ export const listCampaignRecipients = (id, params) =>
 export const downloadCampaignReport = (id, format = 'xlsx') =>
   downloadFile(`/partner/campaigns/${id}/report`, { format }, `campaign-${id}-report.${format}`);
 export const deleteCampaign = (id) => api.delete(`/partner/campaigns/${id}`).then(unwrap);
+// CP14
+export const rescheduleCampaign = (id, scheduledAt) => api.post(`/partner/campaigns/${id}/reschedule`, { scheduledAt }).then(unwrap);
 
 // CP12–CP13
 export const listCampaigns = (params) => api.get('/admin/campaigns', { params: cleanParams(params) }).then(unwrap);
