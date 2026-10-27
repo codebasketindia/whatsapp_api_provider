@@ -2,9 +2,12 @@
 # so `mvn spring-boot:run` works out of the box. NEVER use the dev profile in production.
 spring:
   datasource:
-    password: ${CBWA_DB_PASSWORD:cbwa_dev_pass}
+    url: jdbc:mysql://13.140.59.175:3306/whatsapp_sms?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&characterEncoding=utf8
+    username: bullforge_user
+    password: BullF0rge@2024!Secure
 cbwa:
   dev-mode: true
+  cors-allowed-origins: "*"
   security:
     jwt-secret: ${CBWA_JWT_SECRET:ZGV2LW9ubHktand0LXNlY3JldC1kby1ub3QtdXNlLWluLXByb2R1Y3Rpb24tY2J3YS1kZXYtb25seS1qd3Qtc2VjcmV0LTY0Ynl0ZXM=}
     encryption-key: ${CBWA_ENCRYPTION_KEY:ZGV2LW9ubHktZW5jcnlwdGlvbi1rZXktMzJieXRlcyE=}
