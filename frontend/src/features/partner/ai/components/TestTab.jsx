@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Bot, Eraser, Send, UserRound } from 'lucide-react';
 import { getErrorCode, getErrorMessage } from '../../../../api/axios';
 import * as aiApi from '../../../../api/endpoints/ai';
-import { Alert, Button, Card, Textarea } from '../../../../components/ui';
+import { Alert, Button, Card, PhoneInput, Textarea, isE164Digits } from '../../../../components/ui';
 import { useIsDesktop } from '../../../../hooks/useMediaQuery';
 import { cn } from '../../../../lib/cn';
 import { formatNumber } from '../../../../lib/format';
@@ -52,11 +52,12 @@ export default function TestTab({ assistant }) {
   const desktop = useIsDesktop();
   const [chat, setChat] = useState([]);
   const [text, setText] = useState('');
+  const [phone, setPhone] = useState('');
   const bottomRef = useRef(null);
   useEffect(() => bottomRef.current?.scrollIntoView({ block: 'end' }), [chat.length]);
 
   const ask = useMutation({
-    mutationFn: ({ message, history }) => aiApi.testAssistant({ message, history }),
+    mutationFn: ({ message, history }) => aiApi.testAssistant({ message, history, phone: isE164Digits(phone) ? phone : undefined }),
     onSuccess: (res, { pendingId }) => {
       setChat((c) =>
         c.map((m) =>
@@ -121,6 +122,8 @@ export default function TestTab({ assistant }) {
       <div className="space-y-3">
         <Alert variant="success" title="Tests are free">You can try up to 100 test messages a day. Nothing is sent to WhatsApp and nothing is charged.</Alert>
         {!assistant.platformEnabled && <Alert variant="warning">AI is not switched on by the admin yet, so tests may not work.</Alert>}
+        <PhoneInput label="Test as this customer (optional)" value={phone} onChange={setPhone}
+                    hint="The AI then also uses this number’s bookings and passes." />
         <Card title="Tips" bodyClassName="text-sm text-muted space-y-2">
           <p>Ask something that is <strong>not</strong> in your information — the AI should send your fallback message and hand the chat to you.</p>
           <p>Try a handover word like “{assistant.handoverKeywords?.[0] || 'agent'}”.</p>

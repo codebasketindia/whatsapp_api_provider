@@ -33,6 +33,10 @@ export function assistantToForm(a = {}) {
     fallbackMessage: a.fallbackMessage || '',
     handoverKeywords: a.handoverKeywords || [],
     maxRepliesPerChatPerDay: a.maxRepliesPerChatPerDay ?? 10,
+    supportNumber: (a.supportNumber || '').replace(/\D/g, ''),
+    allowedTopics: a.allowedTopics || '',
+    pauseOnFallback: a.pauseOnFallback ?? true,
+    usePackages: a.usePackages ?? true,
   };
 }
 
@@ -48,6 +52,10 @@ export function formToAssistant(v) {
     fallbackMessage: v.fallbackMessage.trim(),
     handoverKeywords: v.handoverKeywords,
     maxRepliesPerChatPerDay: Number(v.maxRepliesPerChatPerDay),
+    supportNumber: v.supportNumber ? v.supportNumber : null,
+    allowedTopics: v.allowedTopics?.trim() || null,
+    pauseOnFallback: v.pauseOnFallback,
+    usePackages: v.usePackages,
   };
 }
 

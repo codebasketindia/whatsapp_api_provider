@@ -9,7 +9,6 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.TextBlockParam;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,14 +26,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class AnthropicAiClient implements AiModelClient {
+public class AnthropicAiClient implements AiModelClient.Provider {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final JsonOutputFormat.Schema SCHEMA = JsonOutputFormat.Schema.builder()
             .putAdditionalProperty("type", JsonValue.from("object"))
             .putAdditionalProperty("properties", JsonValue.from(Map.of(
                     "reply", Map.of("type", "string"),
-                    "attachments", Map.of("type", "array", "items", Map.of("type", "integer")),
+                    "attachments", Map.of("type", "array", "items", Map.of("type", "string")),
                     "handover", Map.of("type", "boolean"),
                     "reason", Map.of("type", "string"))))
             .putAdditionalProperty("required", JsonValue.from(List.of("reply", "attachments", "handover", "reason")))
@@ -50,19 +49,26 @@ public class AnthropicAiClient implements AiModelClient {
     }
 
     @Override
-    public AiResult complete(AiRequest req) {
+    public String name() {
+        return "ANTHROPIC";
+    }
+
+    @Override
+    public AiModelClient.AiResult complete(AiModelClient.AiRequest req) {
+        List<TextBlockParam> system = new ArrayList<>();
+        system.add(TextBlockParam.builder().text(req.system()).cacheControl(CacheControlEphemeral.builder().build()).build());
+        if (req.context() != null && !req.context().isBlank()) {
+            system.add(TextBlockParam.builder().text(req.context()).build()); // per customer: after the cache breakpoint
+        }
         MessageCreateParams.Builder b = MessageCreateParams.builder()
                 .model(req.model())
                 .maxTokens(req.maxTokens())
-                .systemOfTextBlockParams(List.of(TextBlockParam.builder()
-                        .text(req.system())
-                        .cacheControl(CacheControlEphemeral.builder().build())
-                        .build()))
+                .systemOfTextBlockParams(system)
                 .outputConfig(OutputConfig.builder()
                         .effort(OutputConfig.Effort.LOW)
                         .format(JsonOutputFormat.builder().schema(SCHEMA).build())
                         .build());
-        for (Turn t : alternate(req.history(), req.message())) {
+        for (AiModelClient.Turn t : AiModelClient.alternate(req.history(), req.message())) {
             if (t.customer()) {
                 b.addUserMessage(t.text());
             } else {
@@ -73,7 +79,7 @@ public class AnthropicAiClient implements AiModelClient {
         try {
             res = client(req.apiKey()).messages().create(b.build());
         } catch (RuntimeException e) {
-            throw new AiModelException("AI service error: " + e.getMessage(), e);
+            throw new AiModelClient.AiModelException("AI service error: " + e.getMessage(), e);
         }
         String text = res.content().stream().flatMap(c -> c.text().stream()).map(t -> t.text()).collect(Collectors.joining());
         var u = res.usage();
@@ -81,40 +87,11 @@ public class AnthropicAiClient implements AiModelClient {
         int out = (int) u.outputTokens();
         int cr = u.cacheReadInputTokens().map(Long::intValue).orElse(0);
         int cw = u.cacheCreationInputTokens().map(Long::intValue).orElse(0);
-        try {
-            JsonNode n = JSON.readTree(text);
-            List<Long> ids = new ArrayList<>();
-            n.path("attachments").forEach(a -> {
-                if (a.canConvertToLong()) {
-                    ids.add(a.asLong());
-                }
-            });
-            return new AiResult(n.path("reply").asText(""), ids, n.path("handover").asBoolean(false),
-                    n.path("reason").asText(null), in, out, cr, cw);
-        } catch (Exception e) {
-            // Unparseable (e.g. cut off at max tokens): hand the chat to a human instead of guessing.
+        AiModelClient.AiResult r = AiModelClient.parse(JSON, text, in, out, cr, cw);
+        if (r.handover() && "Answer could not be read".equals(r.reason())) {
             log.info("AI answer was not valid JSON (stop reason {})", res.stopReason().map(Object::toString).orElse("?"));
-            return new AiResult("", List.of(), true, "Answer could not be read", in, out, cr, cw);
         }
-    }
-
-    /** The API needs user/assistant turns alternating and starting with the user; merge or drop the rest. */
-    static List<Turn> alternate(List<Turn> history, String message) {
-        List<Turn> all = new ArrayList<>(history == null ? List.of() : history);
-        all.add(new Turn(true, message));
-        List<Turn> out = new ArrayList<>();
-        for (Turn t : all) {
-            if (t.text() == null || t.text().isBlank() || (out.isEmpty() && !t.customer())) {
-                continue;
-            }
-            Turn last = out.isEmpty() ? null : out.get(out.size() - 1);
-            if (last != null && last.customer() == t.customer()) {
-                out.set(out.size() - 1, new Turn(t.customer(), last.text() + "\n" + t.text()));
-            } else {
-                out.add(t);
-            }
-        }
-        return out;
+        return r;
     }
 
     private AnthropicClient client(String apiKey) {

@@ -17,6 +17,7 @@ import in.codebasket.cbwa.messaging.dto.SendMessageRequest;
 import in.codebasket.cbwa.partner.PartnerEvent;
 import in.codebasket.cbwa.partner.PartnerSettings;
 import in.codebasket.cbwa.partner.PartnerSettingsRepository;
+import in.codebasket.cbwa.travel.TravelService;
 import in.codebasket.cbwa.wallet.WalletRefType;
 import in.codebasket.cbwa.wallet.WalletService;
 import in.codebasket.cbwa.wallet.WalletTransaction;
@@ -39,8 +40,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Answers customer messages with the partner's AI assistant. Runs after the webhook transaction
@@ -53,13 +52,14 @@ public class AiReplyService {
 
     private static final Set<MessageType> ANSWERABLE = Set.of(MessageType.TEXT, MessageType.BUTTON, MessageType.INTERACTIVE,
             MessageType.IMAGE, MessageType.VIDEO, MessageType.DOCUMENT);
-    private static final int MAX_ATTACHMENTS = 3;
 
     private final AiService aiService;
     private final AiAssistantRepository assistantRepository;
     private final AiKnowledgeItemRepository knowledgeRepository;
     private final AiUsageLogRepository usageRepository;
     private final AiModelClient model;
+    private final TravelService travel;
+    private final in.codebasket.cbwa.registration.RegistrationService registrations;
     private final SettingsService settings;
     private final MessageRepository messageRepository;
     private final ConversationWindowRepository windowRepository;
@@ -75,7 +75,10 @@ public class AiReplyService {
                           MessageRepository messageRepository, ConversationWindowRepository windowRepository,
                           PartnerSettingsRepository partnerSettingsRepository, StoredFileRepository fileRepository,
                           OutboundMessageService outbound, WalletService walletService, ApplicationEventPublisher events,
-                          PlatformTransactionManager txManager) {
+                          PlatformTransactionManager txManager, TravelService travel,
+                          in.codebasket.cbwa.registration.RegistrationService registrations) {
+        this.travel = travel;
+        this.registrations = registrations;
         this.aiService = aiService;
         this.assistantRepository = assistantRepository;
         this.knowledgeRepository = knowledgeRepository;
@@ -107,8 +110,8 @@ public class AiReplyService {
 
     /** Public for tests: decides and (maybe) answers one inbound message. Returns the logged outcome or null. */
     public AiOutcome handle(Long partnerId, String inboundUid) {
-        String apiKey = settings.getString(SettingKeys.AI, "anthropic_api_key");
-        if (!settings.getBool(SettingKeys.AI, "enabled", false) || apiKey == null || apiKey.isBlank()) {
+        AiService.Platform platform = aiService.platform();
+        if (platform == null) {
             return null;
         }
         AiAssistant a = assistantRepository.findById(partnerId).orElse(null);
@@ -126,8 +129,8 @@ public class AiReplyService {
             return null;
         }
         String text = in.getPreview() == null ? "" : in.getPreview().trim();
-        if (isKeyword(partnerId, text)) {
-            return null;
+        if (isKeyword(partnerId, text) || registrations.claimed(partnerId, in.getWaId(), text).isPresent()) {
+            return null; // opt-out/opt-in words and pass claim codes are handled elsewhere
         }
         if (!ANSWERABLE.contains(in.getType()) || text.isEmpty()) {
             return finish(in, AiOutcome.SKIPPED, "Customer sent a " + in.getType().name().toLowerCase(Locale.ROOT)
@@ -136,7 +139,7 @@ public class AiReplyService {
         String lower = text.toLowerCase(Locale.ROOT);
         if (a.getHandoverKeywords() != null && a.getHandoverKeywords().stream()
                 .anyMatch(k -> !k.isBlank() && lower.contains(k.toLowerCase(Locale.ROOT)))) {
-            return finish(in, AiOutcome.HANDOVER, "Customer asked for a person", null, true, true, a.getFallbackMessage());
+            return finish(in, AiOutcome.HANDOVER, "Customer asked for a person", null, true, true, AiService.fallbackText(a));
         }
         int cap = Math.min(a.getMaxRepliesPerChatPerDay(), settings.getInt(SettingKeys.AI, "max_replies_per_chat_per_day", 20));
         if (usageRepository.countRepliesSince(in.getPhoneNumberId(), in.getWaId(), Instant.now().minus(Duration.ofHours(24))) >= cap) {
@@ -147,7 +150,10 @@ public class AiReplyService {
             return finish(in, AiOutcome.SKIPPED, "Wallet balance too low for an AI reply", null, true, false);
         }
 
+        // Everything the AI may say is read from the database now, for this answer.
         List<AiKnowledgeItem> items = knowledgeRepository.findByPartnerIdAndActiveTrueOrderBySortOrderAscIdAsc(partnerId);
+        List<TravelService.PackageDto> packages = a.isUsePackages() ? travel.activeForAi(partnerId) : List.of();
+        String context = aiService.customerContext(a, partnerId, in.getWaId());
         int historySize = Math.max(0, Math.min(20, settings.getInt(SettingKeys.AI, "history_messages", 6)));
         List<AiModelClient.Turn> history = new ArrayList<>();
         if (historySize > 0) {
@@ -158,32 +164,29 @@ public class AiReplyService {
         }
         AiModelClient.AiResult r;
         try {
-            r = model.complete(aiService.request(a, items, apiKey, history, text));
+            r = model.complete(aiService.request(a, items, packages, platform, context, history, text));
         } catch (RuntimeException e) {
             log.info("AI call for partner {} failed: {}", partnerId, e.getMessage());
             return finish(in, AiOutcome.ERROR, "AI service did not answer", null, true, false);
         }
         if (r.handover() || r.reply() == null || r.reply().isBlank()) {
             String reason = r.reason() == null || r.reason().isBlank() ? "Answer not in your knowledge" : r.reason();
-            return finish(in, AiOutcome.FALLBACK, reason, r, true, true, a.getFallbackMessage());
+            return finish(in, AiOutcome.FALLBACK, reason, r, true, a.isPauseOnFallback(), AiService.fallbackText(a));
         }
-        return reply(in, r, items, fee);
+        return reply(in, r, aiService.attachments(r.attachmentIds(), items, packages), fee);
     }
 
-    private AiOutcome reply(Message in, AiModelClient.AiResult r, List<AiKnowledgeItem> items, BigDecimal fee) {
-        Map<Long, AiKnowledgeItem> byId = items.stream().collect(Collectors.toMap(AiKnowledgeItem::getId, Function.identity()));
-        List<AiKnowledgeItem> attachments = r.attachmentIds().stream().distinct().map(byId::get)
-                .filter(i -> i != null && i.getFileId() != null).limit(MAX_ATTACHMENTS).toList();
+    private AiOutcome reply(Message in, AiModelClient.AiResult r, List<AiService.Attachment> attachments, BigDecimal fee) {
         String replyText = r.reply().length() > 4000 ? r.reply().substring(0, 4000) : r.reply();
         try {
             return tx.execute(s -> {
                 Message sent = outbound.enqueue(OutboundCommand.of(in.getPartnerId(), in.getPhoneNumberId(), in.getWaId(),
                         text(in, replyText), MessageSource.AI));
-                for (AiKnowledgeItem item : attachments) {
-                    StoredFile f = fileRepository.findById(item.getFileId()).orElse(null);
+                for (AiService.Attachment item : attachments) {
+                    StoredFile f = fileRepository.findById(item.fileId()).orElse(null);
                     if (f != null) {
                         outbound.enqueue(OutboundCommand.of(in.getPartnerId(), in.getPhoneNumberId(), in.getWaId(),
-                                media(in, f, item.getTitle()), MessageSource.AI));
+                                media(in, f, item.title()), MessageSource.AI));
                     }
                 }
                 WalletTransaction wt = fee.signum() > 0
@@ -207,45 +210,52 @@ public class AiReplyService {
         return finish(in, outcome, reason, r, needsHuman, pause, null);
     }
 
-    /** Logs the outcome, flags the chat for a human and optionally sends the partner's fallback message. */
+    /**
+     * Logs the outcome, flags the chat for a human and optionally sends the partner's fallback message,
+     * all in one transaction. If the fallback cannot be sent (no balance, no price) it is retried without
+     * the message so the log and the handover are never lost.
+     */
     private AiOutcome finish(Message in, AiOutcome outcome, String reason, AiModelClient.AiResult r, boolean needsHuman,
                              boolean pause, String fallback) {
-        Long logId;
         try {
-            logId = tx.execute(s -> {
-                AiUsageLog l = usageRepository.save(log(in, outcome, reason, r));
-                windowRepository.findByPhoneNumberIdAndWaId(in.getPhoneNumberId(), in.getWaId()).ifPresent(w -> {
-                    w.setNeedsHuman(w.isNeedsHuman() || needsHuman);
-                    w.setAiPaused(w.isAiPaused() || pause);
-                    windowRepository.save(w);
-                });
-                if (needsHuman) {
-                    events.publishEvent(new InboxEvent(in.getPartnerId(), InboxEvent.MESSAGE_NEW,
-                            Map.of("uid", in.getUid(), "senderId", in.getPhoneNumberId(), "waId", in.getWaId(), "direction", "INBOUND",
-                                    "needsHuman", true)));
+            if (fallback != null && !fallback.isBlank()) {
+                try {
+                    tx.executeWithoutResult(s -> {
+                        Message sent = outbound.enqueue(OutboundCommand.of(in.getPartnerId(), in.getPhoneNumberId(), in.getWaId(),
+                                text(in, fallback), MessageSource.AI));
+                        AiUsageLog l = log(in, outcome, reason, r);
+                        l.setReplyMessageId(sent.getId());
+                        l.setReplyPreview(cut(fallback, 500));
+                        record(in, l, needsHuman, pause);
+                    });
+                    return outcome;
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    throw e;
+                } catch (RuntimeException e) {
+                    String why = cut(reason + " (fallback not sent: " + e.getMessage() + ")", 255);
+                    tx.executeWithoutResult(s -> record(in, log(in, outcome, why, r), needsHuman, pause));
+                    return outcome;
                 }
-                return l.getId();
-            });
+            }
+            tx.executeWithoutResult(s -> record(in, log(in, outcome, reason, r), needsHuman, pause));
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             return null; // another thread already handled this message
         }
-        if (fallback != null && !fallback.isBlank()) {
-            // Separate transaction: a failed send (no balance, no price) must not undo the log and the handover.
-            try {
-                tx.executeWithoutResult(s -> {
-                    Message sent = outbound.enqueue(OutboundCommand.of(in.getPartnerId(), in.getPhoneNumberId(), in.getWaId(),
-                            text(in, fallback), MessageSource.AI));
-                    usageRepository.findById(logId).ifPresent(l -> {
-                        l.setReplyMessageId(sent.getId());
-                        l.setReplyPreview(cut(fallback, 500));
-                    });
-                });
-            } catch (RuntimeException e) {
-                tx.executeWithoutResult(s -> usageRepository.findById(logId)
-                        .ifPresent(l -> l.setReason(cut(reason + " (fallback not sent: " + e.getMessage() + ")", 255))));
-            }
-        }
         return outcome;
+    }
+
+    private void record(Message in, AiUsageLog l, boolean needsHuman, boolean pause) {
+        usageRepository.save(l);
+        windowRepository.findByPhoneNumberIdAndWaId(in.getPhoneNumberId(), in.getWaId()).ifPresent(w -> {
+            w.setNeedsHuman(w.isNeedsHuman() || needsHuman);
+            w.setAiPaused(w.isAiPaused() || pause);
+            windowRepository.save(w);
+        });
+        if (needsHuman) {
+            events.publishEvent(new InboxEvent(in.getPartnerId(), InboxEvent.MESSAGE_NEW,
+                    Map.of("uid", in.getUid(), "senderId", in.getPhoneNumberId(), "waId", in.getWaId(), "direction", "INBOUND",
+                            "needsHuman", true)));
+        }
     }
 
     private AiUsageLog log(Message in, AiOutcome outcome, String reason, AiModelClient.AiResult r) {
@@ -254,7 +264,8 @@ public class AiReplyService {
         l.setPhoneNumberId(in.getPhoneNumberId());
         l.setWaId(in.getWaId());
         l.setInboundMessageId(in.getId());
-        l.setModel(r == null ? null : settings.getString(SettingKeys.AI, "model", "claude-haiku-5-5"));
+        AiService.Platform p = r == null ? null : aiService.platform();
+        l.setModel(p == null ? null : p.model());
         l.setOutcome(outcome);
         l.setReason(cut(reason, 255));
         l.setInboundPreview(cut(in.getPreview(), 255));

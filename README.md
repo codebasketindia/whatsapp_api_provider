@@ -28,8 +28,9 @@ Full steps: [docs/local-setup.md](docs/local-setup.md) · Production: [docs/depl
 | 11 | Dashboards, reports, reconciliation, settings, audit | ✅ | `DashboardReportIT`, `MetaPricingAnalyticsJobIT`, `CleanupJobIT` |
 | 12 | Hardening & go-live kit | ✅ | systemd/Nginx/SSL/backup scripts, prod-profile JAR run, Playwright crawl of 90 screens at 390 px & 1280 px with zero API/JS errors |
 | 13 | AI Assistant (knowledge-only replies, photo/video attachments, handover) + scheduled messages & campaign reschedule | ✅ | `AiAssistantIT` (Claude mocked), `ScheduledMessageIT`, `CampaignFlowIT` — live AI needs your Anthropic API key |
+| 14 | Public registration link + free pass image (Harmain design), follow-ups, OpenAI/Claude AI grounded in travel packages & bookings, support-number handover | ✅ | `RegistrationIT`, `AiAssistantIT`, `OpenAiAiClientTest`; browser: register at 390 px → pass generated, duplicate blocked |
 
-Automated: **106 backend tests** (real MySQL 8) and **70 frontend tests**, all green.
+Automated: **114 backend tests** (real MySQL 8) and **78 frontend tests**, all green.
 
 **Needs your accounts/domain to finish go-live** (cannot be done from the build environment): a real WhatsApp
 message to your phone (Meta app + number), Embedded Signup with a real partner, Razorpay test-mode payment,
@@ -45,7 +46,7 @@ HTTPS on your domain, Meta App Review. Follow `docs/deployment-guide.md` §6–�
 ```
 backend/   Spring Boot app (modules: auth, user, partner, wallet, topup, pricing, payment, invoice, meta, waba,
            sender, convtools, template, messaging, webhook, contact, campaign, publicapi, partnerhook, report, job,
-           ai, scheduling)
+           ai, scheduling, registration, travel)
 frontend/  React SPA (admin + partner panels)
 deploy/    systemd, nginx, mysql, scripts (server-setup, deploy, backup, restore, healthcheck), loadtest, e2e
 docs/      phase docs, guides, QA

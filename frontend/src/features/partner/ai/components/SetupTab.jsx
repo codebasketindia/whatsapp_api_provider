@@ -7,7 +7,7 @@ import { Save, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as aiApi from '../../../../api/endpoints/ai';
 import { getErrorMessage } from '../../../../api/axios';
-import { Alert, Button, Card, Checkbox, Input, RadioCards, Select, Switch, Textarea } from '../../../../components/ui';
+import { Alert, Button, Card, Checkbox, Input, PhoneInput, RadioCards, Select, Switch, Textarea, isE164Digits } from '../../../../components/ui';
 import { formatMoney } from '../../../../lib/format';
 import TagInput from '../../common/TagInput';
 import { senderLabel, useMySenders } from '../../common/useSenders';
@@ -25,9 +25,13 @@ const schema = z
     fallbackMessage: z.string().trim().max(1000, 'Up to 1000 characters'),
     handoverKeywords: z.array(z.string()),
     maxRepliesPerChatPerDay: z.coerce.number({ invalid_type_error: 'Enter a number' }).int('Whole number').min(1, 'At least 1').max(200, 'At most 200'),
+    supportNumber: z.string().refine((v) => !v || isE164Digits(v), 'Enter a valid phone number'),
+    allowedTopics: z.string().max(500, 'Up to 500 characters'),
+    pauseOnFallback: z.boolean(),
+    usePackages: z.boolean(),
   })
   .superRefine((v, ctx) => {
-    if (v.enabled && !v.fallbackMessage) ctx.addIssue({ path: ['fallbackMessage'], code: 'custom', message: 'Needed when AI replies are on' });
+    if (v.enabled && !v.fallbackMessage && !v.supportNumber) ctx.addIssue({ path: ['fallbackMessage'], code: 'custom', message: 'Add a fallback message or a support number' });
     if (!v.allNumbers && !v.senderIds.length) ctx.addIssue({ path: ['senderIds'], code: 'custom', message: 'Pick at least one number' });
   });
 
@@ -70,8 +74,9 @@ export default function SetupTab({ assistant }) {
         </Alert>
       )}
       <Alert variant="info" title="How it works">
-        The AI answers <strong>only</strong> from the information you add in the Knowledge tab. If it does not know the answer, it sends your
-        fallback message and hands the chat to you. It replies only within 24 hours of the customer’s message.
+        The AI answers <strong>only</strong> from your Knowledge, your Travel packages and the customer’s own bookings and passes — read
+        fresh from the database for every reply. If it does not know, or the question is about something else, it politely shares your
+        support number. It replies only within 24 hours of the customer’s message.
       </Alert>
 
       <Card>
@@ -147,8 +152,37 @@ export default function SetupTab({ assistant }) {
         </div>
       </Card>
 
+      <Card title="What the AI may talk about">
+        <div className="space-y-4">
+          <Input
+            label="Allowed topics"
+            maxLength={500}
+            placeholder="Umrah and Hajj packages, tours, bookings and our services"
+            hint="Questions about anything else get your support number instead of an answer."
+            error={errors.allowedTopics?.message}
+            {...register('allowedTopics')}
+          />
+          <Controller
+            name="usePackages"
+            control={control}
+            render={({ field }) => (
+              <Switch checked={field.value} onChange={field.onChange} label="Use my travel packages and bookings"
+                      description="Prices, dates and seats left are read live from Travel packages for every answer. Each customer only hears about their own bookings." />
+            )}
+          />
+        </div>
+      </Card>
+
       <Card title="When AI does not know">
         <div className="space-y-4">
+          <Controller
+            name="supportNumber"
+            control={control}
+            render={({ field }) => (
+              <PhoneInput label="Customer support number" value={field.value} onChange={field.onChange} error={errors.supportNumber?.message}
+                          hint="Shared politely whenever the AI cannot help (other topics, unknown answers, “talk to a person”)." />
+            )}
+          />
           <Textarea
             label="Fallback message"
             rows={2}
@@ -172,6 +206,14 @@ export default function SetupTab({ assistant }) {
                 transform={(s) => s.toLowerCase()}
                 hint="AI stops replying in that chat and it shows “Needs you” in the inbox."
               />
+            )}
+          />
+          <Controller
+            name="pauseOnFallback"
+            control={control}
+            render={({ field }) => (
+              <Switch checked={field.value} onChange={field.onChange} label="Stop AI in that chat after it hands over"
+                      description="Off = the AI keeps answering the next questions in that chat." />
             )}
           />
           <Input

@@ -225,6 +225,35 @@ public class ScheduledMessageService {
                 "Sending was interrupted. Please check the chat and schedule again if needed");
     }
 
+    /**
+     * Schedules an already-validated message for one registrant (registration follow-ups and broadcasts).
+     * Returns false when the content is no longer valid (e.g. the template was paused) - nothing is saved.
+     */
+    @Transactional
+    public boolean scheduleForRegistration(Long partnerId, PhoneNumber sender, String to, SendMessageRequest request,
+                                           Instant at, Long registrationId) {
+        MessagePayloadBuilder.Built built;
+        try {
+            built = payloadBuilder.build(partnerId, sender, to, request);
+        } catch (AppException e) {
+            log.info("Follow-up for registration {} skipped: {}", registrationId, e.getMessage());
+            return false;
+        }
+        ScheduledMessage s = new ScheduledMessage();
+        s.setUid(Ulids.next());
+        s.setPartnerId(partnerId);
+        s.setStatus(ScheduledStatus.SCHEDULED);
+        s.setPhoneNumberId(sender.getId());
+        s.setWaId(to);
+        s.setType(request.type());
+        s.setRequest(write(request));
+        s.setPreview(built.preview() == null ? null : built.preview().length() > 500 ? built.preview().substring(0, 500) : built.preview());
+        s.setScheduledAt(at);
+        s.setRegistrationId(registrationId);
+        repository.save(s);
+        return true;
+    }
+
     private void apply(Long partnerId, ScheduledMessage s, ScheduleRequest req) {
         SendMessageRequest m = req.message();
         if (m.senderId() == null) {

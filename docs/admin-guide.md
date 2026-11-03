@@ -59,8 +59,10 @@ Plain-language guide for CodeBasket staff. Every money action asks for confirmat
 - Meta can later **pause** or **disable** a template for low quality — partners are notified automatically.
 
 ## AI replies (Settings → AI)
-- Paste the **Anthropic API key** (console.anthropic.com → API keys; add billing credit there), switch **Enabled** on.
-- **Model**: keep `claude-haiku-5-5` (cheapest). **Fee per reply**: what partners pay per AI answer (default ₹0.10).
+- Choose the **AI provider**: **OpenAI (ChatGPT)** — paste the OpenAI API key (platform.openai.com → API keys, add billing
+  credit) and keep model `gpt-5-mini` with reasoning effort `low`; or **Anthropic (Claude)** — paste the Anthropic key and keep
+  `claude-haiku-5-5` (usually the cheapest). Switch **Enabled** on.
+- **Fee per reply**: what partners pay per AI answer (default ₹0.10).
   Our real cost is about ₹0.01–0.03 per reply thanks to short answers and prompt caching.
 - **Max output tokens** (400), **history messages** (6) and **max replies per chat per day** (20) keep costs low.
 - Usage across all partners: `GET /api/admin/ai/usage` (same data as the partner Usage tab, with partner names).

@@ -74,6 +74,11 @@ const SupportPage = lazy(() => import('./features/partner/support/pages/SupportP
 const MorePage = lazy(() => import('./features/partner/more/pages/MorePage'));
 const AiAssistantPage = lazy(() => import('./features/partner/ai/pages/AiAssistantPage'));
 const ScheduledPage = lazy(() => import('./features/partner/scheduled/pages/ScheduledPage'));
+const RegistrationLinksPage = lazy(() => import('./features/partner/registrations/pages/RegistrationLinksPage'));
+const RegistrationFormPage = lazy(() => import('./features/partner/registrations/pages/RegistrationFormPage'));
+const RegistrationDetailPage = lazy(() => import('./features/partner/registrations/pages/RegistrationDetailPage'));
+const TravelPage = lazy(() => import('./features/partner/travel/pages/TravelPage'));
+const RegisterPage = lazy(() => import('./features/public/register/RegisterPage'));
 
 /** Wraps an admin page with its permission check (403 when missing). */
 const perm = (permission, element) => (
@@ -87,6 +92,7 @@ export const routes = [
   { path: '/login', element: <LoginPage /> },
   { path: '/login/verify', element: <VerifyOtpPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/r/:slug', element: <RegisterPage /> },
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/404', element: <NotFoundPage /> },
   { path: '/500', element: <ServerErrorPage /> },
@@ -182,6 +188,11 @@ export const routes = [
           { path: 'more', element: <MorePage /> },
           { path: 'ai', element: <AiAssistantPage /> },
           { path: 'scheduled', element: <ScheduledPage /> },
+          { path: 'registrations', element: <RegistrationLinksPage /> },
+          { path: 'registrations/new', element: <RegistrationFormPage /> },
+          { path: 'registrations/:id', element: <RegistrationDetailPage /> },
+          { path: 'registrations/:id/edit', element: <RegistrationFormPage /> },
+          { path: 'travel', element: <TravelPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

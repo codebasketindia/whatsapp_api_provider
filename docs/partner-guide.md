@@ -76,7 +76,25 @@ from a chat (clock button in the composer).
   open at that time — otherwise it fails with a clear reason; use a template for anything later.
 - Scheduled **campaigns** can also be moved: Campaign → *Change time*.
 
-## 10. Developers (API)
+## 10. Registration link & free pass
+**Registrations & passes → New link**: title, the WhatsApp number that sends the pass, optional closing date / seat limit.
+- **Free pass**: keep the ready-made *Harmain Ziyarat Pass* design or upload your own (JPG/PNG) and mark where the name,
+  mobile and photo go. **Preview** shows the exact pass.
+- **Send the pass instantly**: choose an approved template with an **image header** (e.g. "Assalamu Alaikum {{1}}, your
+  free pass {{2}} is attached") and fill its variables with `{name}` / `{passNo}`. Without a template the person taps
+  **Get my pass on WhatsApp** after registering and the pass arrives at once (free, because they messaged you first).
+- **Follow-up messages**: welcome video after 5 minutes, reminder 1 day before, etc. Each is scheduled automatically for
+  every person who registers. Use templates for anything sent more than 24 hours later.
+- Share the link (copy / WhatsApp). One registration per mobile number. Everyone becomes a contact (with your group and
+  tags) so you can also run campaigns. **Message all** schedules one message for everyone on the link; **Export CSV**.
+
+## 11. Travel packages & bookings (for the AI)
+**Travel packages**: add each tour with code, price, dates, total seats, inclusions, day-wise plan and a brochure.
+**Bookings**: add customer bookings (number, travellers, amount paid, status). Seats left update automatically and
+over-booking is blocked. The AI reads these live for every answer, quotes only these facts, tells customers only about
+their own booking, and for anything else shares your **support number** (AI Assistant → Setup).
+
+## 12. Developers (API)
 **Developer** page: create API keys (the secret is shown once — save it), add your server IPs for extra safety,
 set a webhook URL to receive delivery status and incoming messages, send a test event and copy code samples in
 cURL, PHP, Node.js, Java and Python. Full reference: `docs/api-guide.md`.

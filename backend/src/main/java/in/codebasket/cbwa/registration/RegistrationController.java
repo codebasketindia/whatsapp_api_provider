@@ -1,0 +1,175 @@
+package in.codebasket.cbwa.registration;
+
+import in.codebasket.cbwa.auth.LoginRateLimiter;
+import in.codebasket.cbwa.auth.SecurityUtils;
+import in.codebasket.cbwa.common.api.ApiResponse;
+import in.codebasket.cbwa.common.api.PageResponse;
+import in.codebasket.cbwa.common.exception.AppException;
+import in.codebasket.cbwa.common.web.ClientIp;
+import in.codebasket.cbwa.registration.RegistrationFormService.BroadcastRequest;
+import in.codebasket.cbwa.registration.RegistrationFormService.FileRef;
+import in.codebasket.cbwa.registration.RegistrationFormService.FormDto;
+import in.codebasket.cbwa.registration.RegistrationFormService.FormRequest;
+import in.codebasket.cbwa.registration.RegistrationFormService.PreviewRequest;
+import in.codebasket.cbwa.registration.RegistrationService.PublicFormDto;
+import in.codebasket.cbwa.registration.RegistrationService.RegisterResult;
+import in.codebasket.cbwa.registration.RegistrationService.RegistrationDto;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@Tag(name = "Registration links & free passes")
+@RestController
+@RequiredArgsConstructor
+public class RegistrationController {
+
+    private final RegistrationFormService formService;
+    private final RegistrationService service;
+    private final LoginRateLimiter rateLimiter;
+
+    // ---------------------------------------------------------------- partner: links (RF1–RF9)
+
+    @GetMapping("/api/partner/registration-forms")
+    public ApiResponse<List<FormDto>> list() {
+        return ApiResponse.ok(formService.list(SecurityUtils.currentPartnerId()));
+    }
+
+    @PostMapping("/api/partner/registration-forms")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<FormDto> create(@Valid @RequestBody FormRequest req) {
+        return ApiResponse.created(formService.create(SecurityUtils.currentPartnerId(), req), "Registration link created");
+    }
+
+    @GetMapping("/api/partner/registration-forms/{id}")
+    public ApiResponse<FormDto> get(@PathVariable Long id) {
+        return ApiResponse.ok(formService.get(SecurityUtils.currentPartnerId(), id));
+    }
+
+    @PutMapping("/api/partner/registration-forms/{id}")
+    public ApiResponse<FormDto> update(@PathVariable Long id, @Valid @RequestBody FormRequest req) {
+        return ApiResponse.ok(formService.update(SecurityUtils.currentPartnerId(), id, req), "Registration link saved");
+    }
+
+    @DeleteMapping("/api/partner/registration-forms/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        formService.delete(SecurityUtils.currentPartnerId(), id);
+        return ApiResponse.ok(null, "Registration link deleted");
+    }
+
+    @PostMapping("/api/partner/registration-forms/design")
+    public ApiResponse<FileRef> uploadDesign(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(formService.uploadDesign(SecurityUtils.currentPartnerId(), file), "Design uploaded");
+    }
+
+    @PostMapping(value = "/api/partner/registration-forms/preview", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> preview(@RequestBody PreviewRequest req) {
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).cacheControl(CacheControl.noStore())
+                .body(formService.preview(SecurityUtils.currentPartnerId(), req));
+    }
+
+    @PostMapping("/api/partner/registration-forms/{id}/broadcast")
+    public ApiResponse<Map<String, Object>> broadcast(@PathVariable Long id, @Valid @RequestBody BroadcastRequest req) {
+        return ApiResponse.ok(formService.broadcast(SecurityUtils.currentPartnerId(), id, req), "Message scheduled for everyone registered");
+    }
+
+    @GetMapping("/api/partner/registration-forms/{id}/export")
+    public ResponseEntity<byte[]> export(@PathVariable Long id) {
+        StringBuilder sb = new StringBuilder("Pass No,Name,Mobile,Pass status,Registered at\n");
+        for (Registration r : service.export(SecurityUtils.currentPartnerId(), id)) {
+            sb.append(csv(r.getPassNo())).append(',').append(csv(r.getName())).append(',').append(csv("+" + r.getPhone())).append(',')
+                    .append(r.getPassStatus()).append(',').append(r.getCreatedAt()).append('\n');
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"registrations-" + id + ".csv\"")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(("﻿" + sb).getBytes(StandardCharsets.UTF_8));
+    }
+
+    // ---------------------------------------------------------------- partner: registrations (RG1–RG3)
+
+    @GetMapping("/api/partner/registrations")
+    public ApiResponse<PageResponse<RegistrationDto>> registrations(@RequestParam(required = false) Long formId,
+                                                                    @RequestParam(required = false) String search,
+                                                                    @RequestParam(required = false) PassStatus passStatus,
+                                                                    @RequestParam(required = false) Integer page,
+                                                                    @RequestParam(required = false) Integer size) {
+        return ApiResponse.ok(service.list(SecurityUtils.currentPartnerId(), formId, search, passStatus, page, size));
+    }
+
+    @PostMapping("/api/partner/registrations/{uid}/resend")
+    public ApiResponse<RegistrationDto> resend(@PathVariable String uid) {
+        RegistrationDto dto = service.resend(SecurityUtils.currentPartnerId(), uid);
+        return ApiResponse.ok(dto, switch (dto.passStatus()) {
+            case SENT -> "Pass sent on WhatsApp";
+            case WAITING_FOR_CHAT -> "The customer must message you first (or set a pass template)";
+            default -> "Pass could not be sent";
+        });
+    }
+
+    @PostMapping("/api/partner/registrations/{uid}/regenerate")
+    public ApiResponse<RegistrationDto> regenerate(@PathVariable String uid) {
+        return ApiResponse.ok(service.regenerate(SecurityUtils.currentPartnerId(), uid), "Pass image created again");
+    }
+
+    // ---------------------------------------------------------------- public (PR1–PR3)
+
+    @GetMapping("/api/public/register/{slug}")
+    public ApiResponse<PublicFormDto> publicForm(@PathVariable String slug) {
+        return ApiResponse.ok(service.publicForm(slug));
+    }
+
+    @PostMapping(value = "/api/public/register/{slug}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<RegisterResult> register(@PathVariable String slug, @RequestParam(required = false) String name,
+                                                @RequestParam(required = false) String mobile,
+                                                @RequestParam(required = false) Boolean consent,
+                                                @RequestParam(required = false) MultipartFile photo,
+                                                @RequestParam(required = false) String website,
+                                                HttpServletRequest request) {
+        String ip = ClientIp.of(request);
+        rateLimiter.check("register", ip);
+        if (website != null && !website.isBlank()) {
+            throw AppException.badRequest("Request rejected"); // honeypot field filled in by bots
+        }
+        return ApiResponse.created(service.register(slug, name, mobile, consent, photo, ip, request.getHeader(HttpHeaders.USER_AGENT)),
+                "Registered");
+    }
+
+    @GetMapping(value = "/api/public/passes/{uid}.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> pass(@PathVariable String uid, @RequestParam(defaultValue = "false") boolean download) {
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CONTENT_DISPOSITION, (download ? "attachment" : "inline") + "; filename=\"pass.jpg\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                .body(service.passImage(uid));
+    }
+
+    private static String csv(String s) {
+        if (s == null) {
+            return "";
+        }
+        String v = s.matches("^[=+\\-@].*") && !s.matches("^\\+\\d+$") ? "'" + s : s; // spreadsheet formula injection
+        return v.contains(",") || v.contains("\"") || v.contains("\n") ? "\"" + v.replace("\"", "\"\"") + "\"" : v;
+    }
+}

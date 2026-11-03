@@ -18,3 +18,5 @@ export * as dashboardApi from './dashboard';
 export * as settingsApi from './settings';
 export * as aiApi from './ai';
 export * as scheduledApi from './scheduled';
+export * as registrationsApi from './registrations';
+export * as travelApi from './travel';

@@ -51,4 +51,7 @@ public class ScheduledMessage extends AuditableEntity {
     private String error;
 
     private Instant attemptedAt;
+
+    /** Set for follow-ups created by a registration link. */
+    private Long registrationId;
 }

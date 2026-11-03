@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { BarChart3, Bell, Bot, CalendarClock, ChevronRight, Code2, Contact, FileText, LifeBuoy, LogOut, Megaphone, Smartphone, UserCircle } from 'lucide-react';
+import { BarChart3, Bell, Bot, CalendarClock, ChevronRight, Code2, Contact, FileText, LifeBuoy, LogOut, Megaphone, Plane, Smartphone, Ticket, UserCircle } from 'lucide-react';
 import { useAuth } from '../../../../auth/useAuth';
 import { Avatar, PageHeader } from '../../../../components/ui';
 import ThemeToggle from '../../../../components/layout/ThemeToggle';
@@ -10,6 +10,8 @@ const GROUPS = [
     items: [
       { to: '/partner/ai', label: 'AI Assistant', icon: Bot, text: 'Let AI answer customers from your info' },
       { to: '/partner/scheduled', label: 'Scheduled', icon: CalendarClock, text: 'Messages set to go later' },
+      { to: '/partner/registrations', label: 'Registrations & passes', icon: Ticket, text: 'Share a link, send free passes' },
+      { to: '/partner/travel', label: 'Travel packages', icon: Plane, text: 'Tours, prices and bookings for the AI' },
       { to: '/partner/senders', label: 'My numbers', icon: Smartphone, text: 'Connect and manage WhatsApp numbers' },
       { to: '/partner/templates', label: 'Templates', icon: FileText, text: 'Create and track message templates' },
       { to: '/partner/campaigns', label: 'Campaigns', icon: Megaphone, text: 'Send to many people at once' },

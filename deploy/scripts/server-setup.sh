@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 apt-get update
-apt-get install -y openjdk-21-jre-headless mysql-server nginx certbot python3-certbot-nginx curl rsync unzip ufw
+apt-get install -y openjdk-21-jre-headless mysql-server nginx certbot python3-certbot-nginx curl rsync unzip ufw fontconfig fonts-dejavu-core fonts-noto-core
 # Build tools (only needed if you build on the server)
 apt-get install -y maven
 if ! command -v node >/dev/null; then

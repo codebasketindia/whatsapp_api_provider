@@ -88,6 +88,7 @@ class AiAssistantIT extends AbstractIntegrationTest {
         sender = testData.sender(waba, partner.getId(), SenderType.PLATFORM_SENDER);
         token = testData.accessToken(partner);
         settings.set(SettingKeys.AI, "enabled", "true");
+        settings.set(SettingKeys.AI, "provider", "ANTHROPIC");
         settings.set(SettingKeys.AI, "anthropic_api_key", "sk-ant-test");
         settings.set(SettingKeys.AI, "fee_per_reply", "0.10");
     }
@@ -105,6 +106,8 @@ class AiAssistantIT extends AbstractIntegrationTest {
         send(put("/api/partner/ai/assistant"), """
                 {"enabled":true,"fallbackMessage":"Our team will reply soon"}""")
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[0].field").value("enabled"));
+        mockMvc.perform(get("/api/partner/ai/assistant").header("Authorization", TestData.bearer(token)))
+                .andExpect(jsonPath("$.data.provider").value("ANTHROPIC"));
     }
 
     @Test
@@ -215,6 +218,51 @@ class AiAssistantIT extends AbstractIntegrationTest {
         settings.set(SettingKeys.AI, "anthropic_api_key", null);
         send(post("/api/partner/ai/test"), "{\"message\":\"hi\"}")
                 .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("AI_NOT_AVAILABLE"));
+    }
+
+    @Test
+    void openAiAnswersFromLivePackagesAndBookingsAndSharesSupportNumberOtherwise() throws Exception {
+        settings.set(SettingKeys.AI, "provider", "OPENAI");
+        settings.set(SettingKeys.AI, "openai_api_key", "sk-openai-test");
+        String pkg = send(post("/api/partner/travel/packages"), """
+                {"code":"UMR-DLX","name":"Umrah Deluxe 15 days","destination":"Makkah & Madinah","duration":"15 days",
+                 "price":85000,"priceNote":"per person, quad sharing","seatsTotal":10,"inclusions":"Visa, flights, hotel"}""")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long pkgId = TestData.json(pkg).path("data").path("id").asLong();
+        send(post("/api/partner/travel/bookings"), """
+                {"packageId":%d,"phone":"%s","customerName":"Ravi Kumar","travellers":3,"amount":255000,"paidAmount":50000,"status":"CONFIRMED"}"""
+                .formatted(pkgId, TO)).andExpect(status().isCreated());
+        send(post("/api/partner/travel/bookings"), """
+                {"packageId":%d,"phone":"919800000000","travellers":8,"status":"CONFIRMED"}""".formatted(pkgId))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[0].field").value("travellers"));
+        send(put("/api/partner/ai/assistant"), """
+                {"enabled":true,"businessName":"Al Haram Tours","supportNumber":"9822001122","pauseOnFallback":false,
+                 "allowedTopics":"Umrah and Hajj packages, tours and bookings"}""")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.supportNumber").value("+919822001122"))
+                .andExpect(jsonPath("$.data.provider").value("OPENAI"));
+
+        when(model.complete(any())).thenReturn(new AiModelClient.AiResult("Umrah Deluxe: Rs 85000 per person, 7 seats left.",
+                List.of(), false, "package", 900, 20, 0, 0));
+        webhook(inboundText("wamid.P1", "umrah package price and seats?"));
+        await().atMost(Duration.ofSeconds(10)).until(() -> usageRepository.count() == 1);
+        ArgumentCaptor<AiModelClient.AiRequest> req = ArgumentCaptor.forClass(AiModelClient.AiRequest.class);
+        verify(model).complete(req.capture());
+        assertThat(req.getValue().provider()).isEqualTo("OPENAI");
+        assertThat(req.getValue().model()).isEqualTo("gpt-5-mini");
+        assertThat(req.getValue().apiKey()).isEqualTo("sk-openai-test");
+        assertThat(req.getValue().system()).contains("[P" + pkgId + "] Umrah Deluxe 15 days").contains("Price: Rs 85000 (per person, quad sharing)")
+                .contains("Seats available: 7").contains("Only answer questions about: Umrah and Hajj packages, tours and bookings");
+        assertThat(req.getValue().context()).contains("+" + TO).contains("Umrah Deluxe 15 days, 3 traveller(s), status CONFIRMED")
+                .contains("paid Rs 50000");
+
+        // Off-topic: fallback with the support number, and the AI stays on for this chat.
+        when(model.complete(any())).thenReturn(new AiModelClient.AiResult("", List.of(), true, "off topic", 900, 5, 0, 0));
+        webhook(inboundText("wamid.P2", "who will win the cricket match?"));
+        await().atMost(Duration.ofSeconds(10)).until(() -> usageRepository.count() == 2);
+        Message last = messageRepository.findAll().stream().filter(m -> m.getDirection() == MessageDirection.OUTBOUND)
+                .reduce((a, b) -> b).orElseThrow();
+        assertThat(last.getPreview()).contains("+919822001122");
+        assertThat(windowRepository.findByPhoneNumberIdAndWaId(sender.getId(), TO).orElseThrow().isAiPaused()).isFalse();
     }
 
     // ---- helpers

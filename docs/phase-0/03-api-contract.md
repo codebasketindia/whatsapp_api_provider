@@ -482,6 +482,57 @@ sets `windowOpenAtSchedule:false` as a warning). Price is held at send time, not
 | SC7 | POST | /partner/scheduled-messages/{uid}/send-now | PTR | — | ScheduledMessageDto (status after the attempt) | CONFLICT |
 | CP14 | POST | /partner/campaigns/{id}/reschedule | PTR | `{scheduledAt}` | CampaignDto | CAMPAIGN_INVALID_STATE (only SCHEDULED) |
 
+### 4.21 Registration links & free passes (partner + public) — v1.4
+A partner creates a **registration link** (form). People open `{frontendUrl}/r/{slug}`, enter name + WhatsApp mobile and tick
+consent. One registration per mobile per link (unique `form_id + phone`). Each registration gets a pass number
+(`{passPrefix}-000001`…), a personal **pass image** (the design with name/mobile/photo printed on it, JPEG) and is saved as a
+contact (optional group + tags, any opt-out removed because the person opted in). The pass is sent on WhatsApp right after
+the registration commits:
+- approved template with an **IMAGE header** set (`passTemplateId`) → sent instantly as that template, the pass as the header;
+- otherwise as a normal image if the 24-hour window is open, else `passStatus=WAITING_FOR_CHAT` — the success page shows a
+  `wa.me` button with `PASS-XXXXXX`; when that message arrives from the same number the pass is sent as a free image.
+Follow-ups (`followUps`) are scheduled per registrant as scheduled messages (§4.20) `delayMinutes` after registering or at a
+fixed `sendAt`; `{name}`, `{mobile}`, `{passNo}` are replaced in text, captions and template variables.
+
+**FormDto** `{ id, uid, slug, publicUrl, title, description, sender{id,displayPhoneNumber}, status: ACTIVE|PAUSED|CLOSED, closesAt, maxRegistrations, consentText, successMessage, collectPhoto, passEnabled, passDesign ("harmain" built-in | null), passDesignFile {fileUid,url} | null, passLayout {name,mobile,photo,passNo: {x,y,w,h} fractions | null, textColor}, passPrefix, passTemplateId, passTemplateBody [string], passCaption, contactGroupId, contactTags [string], followUps [{label, delayMinutes | null, sendAt | null, message: SendMessageRequest without senderId/to}], registrationsCount, createdAt, updatedAt }`
+**RegistrationDto** `{ uid, formId, formTitle, passNo, name, phone, passStatus: PENDING|SENT|WAITING_FOR_CHAT|FAILED|DISABLED, passError, passUrl, photoUrl, messageUid, contactId, createdAt }`
+
+| # | Method | URL | Role | Request | Response `data` | Errors |
+|---|---|---|---|---|---|---|
+| RF1 | GET | /partner/registration-forms | PTR | — | `[FormDto]` | |
+| RF2 | POST | /partner/registration-forms | PTR | FormDto editable fields + `senderId`, `passDesignFileUid` | FormDto | VALIDATION_FAILED (`slug` taken, template not approved / no IMAGE header, follow-up invalid) |
+| RF3 | GET | /partner/registration-forms/{id} | PTR | — | FormDto | NOT_FOUND |
+| RF4 | PUT | /partner/registration-forms/{id} | PTR | as RF2 | FormDto | |
+| RF5 | DELETE | /partner/registration-forms/{id} | PTR | — | null | CONFLICT (has registrations — close it instead) |
+| RF6 | POST | /partner/registration-forms/design | PTR | multipart `file` (JPG/PNG ≤5 MB) | `{fileUid, url}` | FILE_* |
+| RF7 | POST | /partner/registration-forms/preview | PTR | `{passDesign, passDesignFileUid, passLayout, name, mobile}` | **image/jpeg** sample pass | |
+| RF8 | GET | /partner/registration-forms/{id}/export | PTR | — | CSV (Pass No, Name, Mobile, Pass status, Registered at) | |
+| RF9 | POST | /partner/registration-forms/{id}/broadcast | PTR | `{scheduledAt, message}` | `{scheduled, skipped}` (one scheduled message per registrant) | |
+| RG1 | GET | /partner/registrations | PTR | `?formId&search&passStatus&page&size` | Page<RegistrationDto> | |
+| RG2 | POST | /partner/registrations/{uid}/resend | PTR | — | RegistrationDto (message says what happened) | |
+| RG3 | POST | /partner/registrations/{uid}/regenerate | PTR | — | RegistrationDto (new pass image with the current design) | |
+| PR1 | GET | /public/register/{slug} | PUB | — | `{slug, title, description, businessName, consentText, collectPhoto, passEnabled, open, closedReason}` | NOT_FOUND |
+| PR2 | POST | /public/register/{slug} | PUB (rate-limited per IP) | multipart `name, mobile, consent=true, photo?` (+ hidden honeypot `website`) | `{uid, name, passNo, passUrl, passStatus, whatsappLink, successMessage}` | VALIDATION_FAILED (`name`, `mobile`, `consent`), CONFLICT (already registered → field `mobile`; closed / full / paused), RATE_LIMITED |
+| PR3 | GET | /public/passes/{uid}.jpg | PUB (unguessable id) | `?download` | image/jpeg | NOT_FOUND |
+
+### 4.22 Travel packages & bookings (partner) — v1.4
+The database the AI assistant answers from. Seats left = `seatsTotal` − travellers of CONFIRMED/COMPLETED bookings
+(over-booking is rejected). The AI receives the ACTIVE packages and **only the current customer's own** bookings and passes.
+
+**PackageDto** `{ id, code, name, destination, duration, price, priceNote, startDate, endDate, seatsTotal, seatsBooked, seatsAvailable, inclusions, exclusions, itinerary, details, media {fileUid,url,mimeType,filename} | null, status: ACTIVE|INACTIVE|SOLD_OUT, sortOrder, updatedAt }`
+**BookingDto** `{ uid, travelPackage {id,code,name}, phone, customerName, travellers, amount, paidAmount, status: ENQUIRY|CONFIRMED|CANCELLED|COMPLETED, travelDate, notes, createdAt, updatedAt }`
+
+| # | Method | URL | Role | Request | Response `data` | Errors |
+|---|---|---|---|---|---|---|
+| TP1 | GET | /partner/travel/packages | PTR | `?status` | `[PackageDto]` | |
+| TP2 | POST | /partner/travel/packages | PTR | PackageDto editable fields + `fileUid` (from AI7 upload) | PackageDto | VALIDATION_FAILED (`code` used) |
+| TP3 | PUT | /partner/travel/packages/{id} | PTR | as TP2 | PackageDto | NOT_FOUND |
+| TP4 | DELETE | /partner/travel/packages/{id} | PTR | — | null | CONFLICT (has bookings) |
+| TB1 | GET | /partner/travel/bookings | PTR | `?packageId&status&search&page&size` | Page<BookingDto> | |
+| TB2 | POST | /partner/travel/bookings | PTR | `{packageId, phone, customerName, travellers, amount, paidAmount, status, travelDate, notes}` | BookingDto | VALIDATION_FAILED (`travellers`: only N seats left) |
+| TB3 | PUT | /partner/travel/bookings/{uid} | PTR | as TB2 | BookingDto | NOT_FOUND |
+| TB4 | DELETE | /partner/travel/bookings/{uid} | PTR | — | null | NOT_FOUND |
+
 ### 4.18 System
 | GET | /actuator/health | PUB | `{status:"UP"}` (details only on localhost) |
 | GET | /swagger-ui.html, /v3/api-docs | PUB in dev; prod: admin-only via Nginx basic auth or disabled by `CBWA_SWAGGER_ENABLED` |
@@ -526,3 +577,9 @@ sets `windowOpenAtSchedule:false` as a warning). Price is held at send time, not
   New env `CBWA_SEED_ADMIN_MOBILE`. AUTH_INVALID_CREDENTIALS message: "Mobile number or password is incorrect".
 - v1.3 — AI Assistant (§4.19: AI1–AI11, settings group `ai`, error `AI_NOT_AVAILABLE` 503) and scheduled messages
   (§4.20: SC1–SC7, campaign reschedule CP14). New message sources `AI`, `SCHEDULED`; wallet ref type `AI_REPLY`.
+- v1.4 — Public registration links with free pass image (§4.21: RF1–RF9, RG1–RG3, PR1–PR3), travel packages & bookings
+  (§4.22: TP1–TP4, TB1–TB4). AI: provider choice in settings `ai` (`provider` OPENAI|ANTHROPIC, `openaiApiKey` secret,
+  `openaiModel` default `gpt-5-mini`, `openaiReasoningEffort` default `low`); AiAssistantDto adds `supportNumber`,
+  `allowedTopics`, `pauseOnFallback`, `usePackages`, `provider` (read-only); AI8 accepts optional `phone`. The AI answers only
+  from knowledge + live packages + the customer's own bookings/passes; anything else gets the support number. Message
+  source `REGISTRATION`, contact source `REGISTRATION`.

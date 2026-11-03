@@ -62,6 +62,19 @@ public class AiAssistant {
     @Column(nullable = false)
     private int maxRepliesPerChatPerDay = 20;
 
+    /** Shared with customers whenever the AI cannot help (unrelated question, unknown answer, human asked). */
+    private String supportNumber;
+
+    /** e.g. "travel, tours, Hajj/Umrah packages"; anything else is answered with the support number. */
+    private String allowedTopics;
+
+    @Column(nullable = false)
+    private boolean pauseOnFallback = true;
+
+    /** Include the partner's travel packages and the customer's own bookings/passes in every answer. */
+    @Column(nullable = false)
+    private boolean usePackages = true;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

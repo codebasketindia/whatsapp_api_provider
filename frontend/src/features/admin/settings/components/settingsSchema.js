@@ -67,8 +67,20 @@ export const SETTINGS_FIELDS = {
   ],
   ai: [
     { key: 'enabled', label: 'Let partners use the AI Assistant', type: 'switch', hint: 'Off = no AI replies are sent for any partner.' },
+    {
+      key: 'provider',
+      label: 'AI provider',
+      type: 'radio',
+      options: [
+        { value: 'OPENAI', label: 'OpenAI (ChatGPT)', description: 'Uses the OpenAI API key and model below.' },
+        { value: 'ANTHROPIC', label: 'Anthropic (Claude)', description: 'Uses the Anthropic API key and model below. Usually cheapest.' },
+      ],
+    },
+    { key: 'openaiApiKey', label: 'OpenAI API key', type: 'secret', hint: 'platform.openai.com → API keys. Add billing credit there.' },
+    { key: 'openaiModel', label: 'OpenAI model', type: 'text', placeholder: 'gpt-5-mini', hint: 'A small model keeps replies cheap. Use any chat model your OpenAI account has.' },
+    { key: 'openaiReasoningEffort', label: 'OpenAI reasoning effort', type: 'text', placeholder: 'low', hint: 'For reasoning models (gpt-5 family): minimal / low / medium. Leave empty for other models.' },
     { key: 'anthropicApiKey', label: 'Anthropic API key', type: 'secret' },
-    { key: 'model', label: 'AI model', type: 'text', placeholder: 'claude-haiku-5-5', hint: 'claude-haiku-5-5 is the cheapest and fast enough for customer replies.' },
+    { key: 'model', label: 'Anthropic model', type: 'text', placeholder: 'claude-haiku-5-5', hint: 'claude-haiku-5-5 is the cheapest and fast enough for customer replies.' },
     { key: 'feePerReply', label: 'Fee per AI reply (₹)', type: 'number', hint: 'Debited from the partner wallet for every AI reply sent.' },
     { key: 'maxOutputTokens', label: 'Longest reply (output tokens)', type: 'number', min: 50, hint: 'Lower = shorter and cheaper replies. 400 ≈ 300 words.' },
     { key: 'historyMessages', label: 'Previous messages the AI reads', type: 'number', min: 0, max: 30, hint: 'Fewer = cheaper. 6 is enough for most chats.' },
