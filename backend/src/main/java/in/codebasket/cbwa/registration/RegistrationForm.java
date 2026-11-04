@@ -84,4 +84,9 @@ public class RegistrationForm extends AuditableEntity {
 
     @Column(nullable = false)
     private int registrationsCount;
+
+    /** Registration fee in rupees, collected in the partner's own Razorpay account. Null = free. */
+    private java.math.BigDecimal feeAmount;
+
+    private String feeLabel;
 }

@@ -19,4 +19,14 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findByFormIdOrderByIdAsc(Long formId);
 
     boolean existsByClaimCode(String claimCode);
+
+    Optional<Registration> findByRazorpayOrderId(String razorpayOrderId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select r from Registration r where r.id = :id")
+    Optional<Registration> lockById(@org.springframework.data.repository.query.Param("id") Long id);
+
+    /** Unpaid registrations with an order, for the reconciliation job. */
+    List<Registration> findTop50ByPaymentStatusAndRazorpayOrderIdIsNotNullAndUpdatedAtBetweenOrderByIdAsc(
+            PaymentStatus status, java.time.Instant from, java.time.Instant to);
 }

@@ -533,6 +533,28 @@ The database the AI assistant answers from. Seats left = `seatsTotal` − travel
 | TB3 | PUT | /partner/travel/bookings/{uid} | PTR | as TB2 | BookingDto | NOT_FOUND |
 | TB4 | DELETE | /partner/travel/bookings/{uid} | PTR | — | null | NOT_FOUND |
 
+### 4.23 Paid registrations (partner Razorpay) — v1.5
+A partner connects **their own Razorpay account** (keys encrypted; fees go straight to the partner). A link with
+`feeAmount` (₹1–5,00,000) needs a connected account. PR2 on a paid link saves the registration as
+`paymentStatus=PENDING, passStatus=AWAITING_PAYMENT` (no pass number, pass, contact or follow-ups yet), creates a Razorpay
+order in the partner's account and returns `payment {keyId, orderId, amount (paise), currency, name, description}` for the
+browser checkout. Submitting again with the same mobile before paying reuses the registration with a new order; after
+payment the mobile is a duplicate. The registration is completed (pass number, pass image, contact, follow-ups, WhatsApp
+pass) only when the payment is confirmed by **PR4** (checkout signature HMAC(order|payment, partner key secret) and the
+order must match), by the partner webhook **PH1**, or by the reconciliation job (every 3 min, orders 2 min–24 h old).
+Completion is idempotent. RegisterResult adds `paymentStatus, amount, payment, mobile`; PublicFormDto adds `feeAmount,
+feeLabel`; FormDto adds `feeAmount, feeLabel, paymentsReady`; RegistrationDto adds `paymentStatus: NOT_REQUIRED|PENDING|PAID|FAILED,
+amount, paymentId, paymentMethod, paidAt`; PassStatus adds `AWAITING_PAYMENT`.
+
+| # | Method | URL | Role | Request | Response `data` | Errors |
+|---|---|---|---|---|---|---|
+| PA1 | GET | /partner/payment-account | PTR | — | `{provider, keyId, keySecretSet, webhookSecretSet, enabled, verifiedAt, webhookUrl}` | |
+| PA2 | PUT | /partner/payment-account | PTR | `{keyId, keySecret?, webhookSecret?, enabled}` (secrets replace-only; enabling tests the keys) | as PA1 | VALIDATION_FAILED (`keySecret`: keys rejected) |
+| PA3 | POST | /partner/payment-account/test | PTR | — | as PA1 | VALIDATION_FAILED |
+| RG4 | POST | /partner/registrations/{uid}/check-payment | PTR | — | RegistrationDto (asks Razorpay) | CONFLICT (free) |
+| PR4 | POST | /public/register/{slug}/verify-payment | PUB (rate-limited) | `{registrationUid, razorpayOrderId, razorpayPaymentId, razorpaySignature}` | RegisterResult (`passNo`, `passUrl` now set) | PAYMENT_SIGNATURE_INVALID |
+| PH1 | POST | /webhooks/razorpay/partners/{partnerUid} | PUB (signature) | Razorpay event (`payment.captured`, `order.paid`, `payment.failed`), header `X-Razorpay-Signature` = HMAC(raw body, partner webhook secret) | `{result}` | 400 WEBHOOK_SIGNATURE_INVALID |
+
 ### 4.18 System
 | GET | /actuator/health | PUB | `{status:"UP"}` (details only on localhost) |
 | GET | /swagger-ui.html, /v3/api-docs | PUB in dev; prod: admin-only via Nginx basic auth or disabled by `CBWA_SWAGGER_ENABLED` |
@@ -583,3 +605,5 @@ The database the AI assistant answers from. Seats left = `seatsTotal` − travel
   `allowedTopics`, `pauseOnFallback`, `usePackages`, `provider` (read-only); AI8 accepts optional `phone`. The AI answers only
   from knowledge + live packages + the customer's own bookings/passes; anything else gets the support number. Message
   source `REGISTRATION`, contact source `REGISTRATION`.
+- v1.5 — Paid registrations (§4.23: PA1–PA3, RG4, PR4, PH1): partner's own Razorpay account, `feeAmount` on links, pass
+  created and sent on WhatsApp only after a verified payment. RF8 CSV adds payment status, amount and Razorpay payment id.

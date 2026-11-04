@@ -131,7 +131,12 @@ public class RazorpayGateway implements PaymentGateway {
         if (!isConfigured()) {
             throw new GatewayException(0, "Razorpay keys are not configured");
         }
-        String auth = Base64.getEncoder().encodeToString((keyId() + ":" + keySecret()).getBytes(StandardCharsets.UTF_8));
+        return callWith(keyId(), keySecret(), method, path, body);
+    }
+
+    /** Same API with explicit keys - used for partners' own Razorpay accounts (registration fees). */
+    public JsonNode callWith(String keyId, String keySecret, String method, String path, Object body) {
+        String auth = Base64.getEncoder().encodeToString((keyId + ":" + keySecret).getBytes(StandardCharsets.UTF_8));
         String url = props.getRazorpay().getBaseUrl() + path;
         try {
             var spec = webClient.method(org.springframework.http.HttpMethod.valueOf(method)).uri(url)

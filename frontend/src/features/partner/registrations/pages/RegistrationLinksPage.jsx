@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Plus, Ticket } from 'lucide-react';
 import * as regApi from '../../../../api/endpoints/registrations';
 import { Badge, Button, Card, CopyButton, EmptyState, PageHeader, QueryState } from '../../../../components/ui';
-import { formatDate, formatNumber } from '../../../../lib/format';
+import { formatDate, formatMoney, formatNumber } from '../../../../lib/format';
+import PaymentAccountCard from '../components/PaymentAccountCard';
 
 const STATUS = { ACTIVE: ['green', 'Open'], PAUSED: ['yellow', 'Paused'], CLOSED: ['gray', 'Closed'] };
 
@@ -17,6 +18,7 @@ export default function RegistrationLinksPage() {
         subtitle="Share a link. People register with name and WhatsApp number and get their personal pass on WhatsApp."
         actions={<Button leftIcon={Plus} to="/partner/registrations/new">New link</Button>}
       />
+      <PaymentAccountCard />
       <QueryState query={q}>
         {(forms) =>
           !forms.length ? (
@@ -39,6 +41,7 @@ export default function RegistrationLinksPage() {
                       <span className="min-w-0 flex-1 truncate">{f.publicUrl}</span>
                       <CopyButton value={f.publicUrl} toastMessage="Link copied" />
                     </div>
+                    {f.feeAmount && <p className="text-sm font-medium text-ink">Fee {formatMoney(f.feeAmount)} · paid online</p>}
                     <p className="text-xs text-muted">Sends from {f.sender?.displayPhoneNumber || '—'} · created {formatDate(f.createdAt)}</p>
                   </li>
                 );

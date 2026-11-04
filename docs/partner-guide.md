@@ -88,6 +88,13 @@ from a chat (clock button in the composer).
 - Share the link (copy / WhatsApp). One registration per mobile number. Everyone becomes a contact (with your group and
   tags) so you can also run campaigns. **Message all** schedules one message for everyone on the link; **Export CSV**.
 
+**Paid registration**: Registrations → **Connect Razorpay** — paste your Razorpay Key ID and Key Secret (Razorpay
+Dashboard → Account & Settings → API Keys) and, recommended, add the shown webhook URL in Razorpay → Webhooks with events
+*payment.captured*, *order.paid*, *payment.failed* and the same secret. Then set **Fee (₹)** on the link. People pay by
+UPI/card/net banking on the link page; the money goes to your Razorpay account. The pass number, pass image, follow-ups
+and the WhatsApp pass are created **only after the payment is confirmed**. Unpaid people show *Not paid yet*; use
+**Check payment** if someone says they paid.
+
 ## 11. Travel packages & bookings (for the AI)
 **Travel packages**: add each tour with code, price, dates, total seats, inclusions, day-wise plan and a brochure.
 **Bookings**: add customer bookings (number, travellers, amount paid, status). Seats left update automatically and

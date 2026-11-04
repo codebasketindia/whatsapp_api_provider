@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Public registration (PR1–PR3) and the free pass: the pass image is generated while registering and
@@ -83,6 +84,7 @@ public class RegistrationService {
     private final MessageRepository messageRepository;
     private final OutboundMessageService outbound;
     private final in.codebasket.cbwa.scheduling.ScheduledMessageService scheduledService;
+    private final PartnerPaymentService payments;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
@@ -94,7 +96,9 @@ public class RegistrationService {
                                PartnerRepository partnerRepository, ConversationWindowRepository windowRepository,
                                MessageRepository messageRepository, OutboundMessageService outbound,
                                in.codebasket.cbwa.scheduling.ScheduledMessageService scheduledService,
-                               ApplicationEventPublisher events, JdbcTemplate jdbc, PlatformTransactionManager txManager) {
+                               ApplicationEventPublisher events, JdbcTemplate jdbc, PlatformTransactionManager txManager,
+                               PartnerPaymentService payments) {
+        this.payments = payments;
         this.formRepository = formRepository;
         this.repository = repository;
         this.formService = formService;
@@ -115,16 +119,19 @@ public class RegistrationService {
     }
 
     public record PublicFormDto(String slug, String title, String description, String businessName, String consentText,
-                                boolean collectPhoto, boolean passEnabled, boolean open, String closedReason) {
+                                boolean collectPhoto, boolean passEnabled, boolean open, String closedReason,
+                                java.math.BigDecimal feeAmount, String feeLabel) {
     }
 
     public record RegisterResult(String uid, String name, String passNo, String passUrl, PassStatus passStatus,
-                                 String whatsappLink, String successMessage) {
+                                 String whatsappLink, String successMessage, PaymentStatus paymentStatus,
+                                 java.math.BigDecimal amount, PartnerPaymentService.Checkout payment, String mobile) {
     }
 
     public record RegistrationDto(String uid, Long formId, String formTitle, String passNo, String name, String phone,
                                   PassStatus passStatus, String passError, String passUrl, String photoUrl, String messageUid,
-                                  Long contactId, Instant createdAt) {
+                                  Long contactId, PaymentStatus paymentStatus, java.math.BigDecimal amount, String paymentId,
+                                  String paymentMethod, Instant paidAt, Instant createdAt) {
     }
 
     // ---------------------------------------------------------------- public
@@ -134,12 +141,40 @@ public class RegistrationService {
         RegistrationForm f = formRepository.findBySlug(slug).orElseThrow(() -> AppException.notFound("Registration link"));
         Partner p = partnerRepository.findById(f.getPartnerId()).orElseThrow(() -> AppException.notFound("Registration link"));
         String closed = closedReason(f, p);
+        if (closed == null && paid(f) && !payments.ready(f.getPartnerId())) {
+            closed = "Online payment is not available for this registration right now";
+        }
         return new PublicFormDto(f.getSlug(), f.getTitle(), f.getDescription(), p.getBusinessName(), f.getConsentText(),
-                f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed);
+                f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed, paid(f) ? f.getFeeAmount() : null, f.getFeeLabel());
     }
 
-    @Transactional
+    /**
+     * PR2. Free link: the registration is completed at once (pass, contact, follow-ups). Paid link: the
+     * registration is saved as PENDING, a Razorpay order is created in the partner's account and returned
+     * for the browser checkout - nothing else happens until the payment is verified (PR4 / webhook / job).
+     */
     public RegisterResult register(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
+                                   String ip, String userAgent) {
+        RegisterResult prepared = tx.execute(s -> prepare(slug, rawName, rawMobile, consent, photo, ip, userAgent));
+        if (prepared.paymentStatus() != PaymentStatus.PENDING) {
+            return prepared;
+        }
+        Registration r = repository.findByUid(prepared.uid()).orElseThrow();
+        RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
+        long paise = r.getAmount().movePointRight(2).longValueExact();
+        Map<String, String> notes = new LinkedHashMap<>();
+        notes.put("registration", r.getUid());
+        notes.put("form", f.getSlug());
+        notes.put("mobile", "+" + r.getPhone());
+        PartnerPaymentService.Checkout checkout = payments.createOrder(f.getPartnerId(), paise, "REG-" + r.getUid().substring(14), notes,
+                partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(f.getTitle()),
+                f.getFeeLabel() != null ? f.getFeeLabel() : f.getTitle());
+        tx.executeWithoutResult(s -> repository.findById(r.getId()).ifPresent(x -> x.setRazorpayOrderId(checkout.orderId())));
+        return new RegisterResult(prepared.uid(), prepared.name(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
+                PaymentStatus.PENDING, r.getAmount(), checkout, "+" + r.getPhone());
+    }
+
+    private RegisterResult prepare(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
                                    String ip, String userAgent) {
         RegistrationForm found = formRepository.findBySlug(slug).orElseThrow(() -> AppException.notFound("Registration link"));
         String name = rawName == null ? "" : rawName.trim().replaceAll("\\s+", " ");
@@ -158,22 +193,27 @@ public class RegistrationService {
         RegistrationForm f = formRepository.lockById(found.getId()).orElseThrow();
         Partner partner = partnerRepository.findById(f.getPartnerId()).orElseThrow();
         String closed = closedReason(f, partner);
+        if (closed == null && paid(f) && !payments.ready(f.getPartnerId())) {
+            closed = "Online payment is not available for this registration right now";
+        }
         if (closed != null) {
             throw new AppException(ErrorCode.CONFLICT, closed);
         }
-        if (repository.findByFormIdAndPhone(f.getId(), phone).isPresent()) {
+        Registration r = repository.findByFormIdAndPhone(f.getId(), phone).orElse(null);
+        if (r != null && (r.getPaymentStatus() == PaymentStatus.PAID || r.getPaymentStatus() == PaymentStatus.NOT_REQUIRED)) {
             throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered",
                     null, List.of(new in.codebasket.cbwa.common.api.FieldErrorDto("mobile", "This mobile number is already registered")));
         }
-
-        Registration r = new Registration();
-        r.setUid(Ulids.next());
-        r.setFormId(f.getId());
-        r.setPartnerId(f.getPartnerId());
+        if (r == null) {
+            r = new Registration();
+            r.setUid(Ulids.next());
+            r.setFormId(f.getId());
+            r.setPartnerId(f.getPartnerId());
+            r.setPhone(phone);
+            r.setClaimCode(newClaimCode());
+        }
+        // An unpaid earlier attempt is reused: same person trying again with a new order.
         r.setName(name);
-        r.setPhone(phone);
-        r.setPassNo(f.getPassPrefix() + "-" + String.format("%06d", f.getRegistrationsCount() + 1));
-        r.setClaimCode(newClaimCode());
         r.setConsentAt(Instant.now());
         r.setIp(ip);
         r.setUserAgent(userAgent == null ? null : userAgent.substring(0, Math.min(255, userAgent.length())));
@@ -184,32 +224,166 @@ public class RegistrationService {
             StoredFile pf = storage.store(photo, FileCategory.PROFILE_PHOTO, f.getPartnerId(), PHOTO_TYPES, 5L << 20);
             r.setPhotoFileId(pf.getId());
         }
-        r.setContactId(upsertContact(f, name, phone));
-        // Registering with consent is an explicit opt-in.
-        optOutRepository.findByPartnerIdAndPhone(f.getPartnerId(), phone).ifPresent(optOutRepository::delete);
+        if (paid(f)) {
+            r.setPaymentStatus(PaymentStatus.PENDING);
+            r.setPassStatus(PassStatus.AWAITING_PAYMENT);
+            r.setAmount(f.getFeeAmount());
+            r.setRazorpayOrderId(null);
+            try {
+                repository.saveAndFlush(r);
+            } catch (DataIntegrityViolationException e) {
+                throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered");
+            }
+            return new RegisterResult(r.getUid(), r.getName(), null, null, r.getPassStatus(), null, f.getSuccessMessage(),
+                    PaymentStatus.PENDING, r.getAmount(), null, "+" + phone);
+        }
+        r.setPaymentStatus(PaymentStatus.NOT_REQUIRED);
+        r.setPassStatus(f.isPassEnabled() ? PassStatus.PENDING : PassStatus.DISABLED);
+        try {
+            repository.saveAndFlush(r);
+        } catch (DataIntegrityViolationException e) {
+            throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered");
+        }
+        complete(f, r);
+        return result(f, r);
+    }
 
+    /**
+     * Finishes a registration (inside the caller's transaction, form row locked): pass number, contact,
+     * opt-in, pass image, follow-ups, counter - and the pass is sent once the transaction commits.
+     */
+    private void complete(RegistrationForm f, Registration r) {
+        r.setPassNo(f.getPassPrefix() + "-" + String.format("%06d", f.getRegistrationsCount() + 1));
+        r.setContactId(upsertContact(f, r.getName(), r.getPhone()));
+        // Registering with consent is an explicit opt-in.
+        optOutRepository.findByPartnerIdAndPhone(f.getPartnerId(), r.getPhone()).ifPresent(optOutRepository::delete);
         if (f.isPassEnabled()) {
             r.setPassFileId(renderPass(f, r).getId());
             r.setPassStatus(PassStatus.PENDING);
         } else {
             r.setPassStatus(PassStatus.DISABLED);
         }
-        try {
-            repository.saveAndFlush(r);
-        } catch (DataIntegrityViolationException e) {
-            throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered");
-        }
+        repository.saveAndFlush(r);
         f.setRegistrationsCount(f.getRegistrationsCount() + 1);
         formRepository.save(f);
         scheduleFollowUps(f, r);
         events.publishEvent(new RegistrationCreatedEvent(r.getId()));
+    }
 
+    private RegisterResult result(RegistrationForm f, Registration r) {
         PhoneNumber sender = phoneNumberRepository.findById(f.getPhoneNumberId()).orElse(null);
-        return new RegisterResult(r.getUid(), r.getName(), r.getPassNo(), passUrl(r), r.getPassStatus(),
-                sender == null || sender.getWaNumber() == null ? null
+        boolean done = r.getPassNo() != null;
+        return new RegisterResult(r.getUid(), r.getName(), r.getPassNo(), done && r.getPassFileId() != null ? passUrl(r) : null,
+                r.getPassStatus(),
+                !done || sender == null || sender.getWaNumber() == null ? null
                         : "https://wa.me/" + sender.getWaNumber() + "?text=" + java.net.URLEncoder.encode(
                         "Hi, please send my pass. PASS-" + r.getClaimCode(), java.nio.charset.StandardCharsets.UTF_8),
-                f.getSuccessMessage());
+                f.getSuccessMessage(), r.getPaymentStatus(), r.getAmount(), null, "+" + r.getPhone());
+    }
+
+    /**
+     * PR4: the browser's Razorpay success callback. The signature (HMAC of order|payment with the partner's
+     * key secret) proves the payment; the order must be the one created for this registration.
+     */
+    public RegisterResult verifyPayment(String slug, String uid, String orderId, String paymentId, String signature) {
+        Registration r = repository.findByUid(uid).orElseThrow(() -> AppException.notFound("Registration"));
+        RegistrationForm f = formRepository.findById(r.getFormId()).filter(x -> x.getSlug().equals(slug))
+                .orElseThrow(() -> AppException.notFound("Registration"));
+        if (r.getPaymentStatus() == PaymentStatus.PAID) {
+            return result(f, r);
+        }
+        if (orderId == null || !orderId.equals(r.getRazorpayOrderId())
+                || !payments.verifyCheckoutSignature(f.getPartnerId(), orderId, paymentId, signature)) {
+            throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
+        }
+        markPaid(r.getId(), paymentId, null);
+        return tx.execute(s -> result(formRepository.findById(f.getId()).orElseThrow(), repository.findById(r.getId()).orElseThrow()));
+    }
+
+    /** Idempotent: completes the registration the first time its payment is confirmed. Returns true if it did. */
+    public boolean markPaid(Long registrationId, String paymentId, String method) {
+        Long formId = repository.findById(registrationId).map(Registration::getFormId).orElseThrow();
+        Boolean done = tx.execute(s -> {
+            // Same lock order as registering (form first) so the two can never deadlock.
+            RegistrationForm f = formRepository.lockById(formId).orElseThrow();
+            Registration r = repository.lockById(registrationId).orElseThrow();
+            if (r.getPaymentStatus() == PaymentStatus.PAID) {
+                return false;
+            }
+            r.setPaymentStatus(PaymentStatus.PAID);
+            r.setRazorpayPaymentId(paymentId);
+            r.setPaymentMethod(method);
+            r.setPaidAt(Instant.now());
+            complete(f, r);
+            return true;
+        });
+        if (Boolean.TRUE.equals(done)) {
+            log.info("Registration {} paid ({})", registrationId, paymentId);
+        }
+        return Boolean.TRUE.equals(done);
+    }
+
+    /** Razorpay event from the partner's account (payment.captured / order.paid / payment.failed). */
+    public String handlePartnerEvent(Long partnerId, JsonNode event) {
+        String type = event.path("event").asText("");
+        JsonNode pay = event.path("payload").path("payment").path("entity");
+        String orderId = pay.path("order_id").asText(null);
+        if (orderId == null) {
+            orderId = event.path("payload").path("order").path("entity").path("id").asText(null);
+        }
+        if (orderId == null) {
+            return "IGNORED";
+        }
+        Registration r = repository.findByRazorpayOrderId(orderId).filter(x -> x.getPartnerId().equals(partnerId)).orElse(null);
+        if (r == null) {
+            return "IGNORED";
+        }
+        switch (type) {
+            case "payment.captured", "order.paid" -> {
+                markPaid(r.getId(), pay.path("id").asText(null), pay.path("method").asText(null));
+                return "PROCESSED";
+            }
+            case "payment.failed" -> {
+                tx.executeWithoutResult(s -> repository.findById(r.getId()).filter(x -> x.getPaymentStatus() == PaymentStatus.PENDING)
+                        .ifPresent(x -> x.setPaymentStatus(PaymentStatus.FAILED)));
+                return "PROCESSED";
+            }
+            default -> {
+                return "IGNORED";
+            }
+        }
+    }
+
+    /** Asks Razorpay about an unpaid registration's order; completes it if a payment was captured. */
+    public PaymentStatus checkPayment(Registration r) {
+        if (r.getPaymentStatus() == PaymentStatus.PAID || r.getRazorpayOrderId() == null) {
+            return r.getPaymentStatus();
+        }
+        try {
+            for (var p : payments.orderPayments(r.getPartnerId(), r.getRazorpayOrderId())) {
+                if (p.state() == in.codebasket.cbwa.payment.PaymentGateway.PaymentState.CAPTURED) {
+                    markPaid(r.getId(), p.id(), p.method());
+                    return PaymentStatus.PAID;
+                }
+            }
+        } catch (RuntimeException e) {
+            log.info("Payment check for registration {} failed: {}", r.getId(), e.getMessage());
+        }
+        return repository.findById(r.getId()).map(Registration::getPaymentStatus).orElse(r.getPaymentStatus());
+    }
+
+    /** RG4: partner asks to re-check one registration's payment. */
+    public RegistrationDto checkPayment(Long partnerId, String uid) {
+        Registration r = repository.findByUidAndPartnerId(uid, partnerId).orElseThrow(() -> AppException.notFound("Registration"));
+        if (r.getPaymentStatus() == PaymentStatus.NOT_REQUIRED) {
+            throw AppException.conflict("This registration is free");
+        }
+        checkPayment(r);
+        return tx.execute(s -> dto(repository.findById(r.getId()).orElseThrow()));
+    }
+
+    private static boolean paid(RegistrationForm f) {
+        return f.getFeeAmount() != null && f.getFeeAmount().signum() > 0;
     }
 
     /** PR3: the pass image, readable by whoever has the (unguessable) registration id. */
@@ -358,7 +532,17 @@ public class RegistrationService {
                 .forEach(x -> photos.put(x.getId(), "/api/files/" + x.getUid()));
         return PageResponse.of(result, r -> new RegistrationDto(r.getUid(), r.getFormId(), titles.get(r.getFormId()), r.getPassNo(),
                 r.getName(), r.getPhone(), r.getPassStatus(), r.getPassError(), r.getPassFileId() == null ? null : passUrl(r),
-                photos.get(r.getPhotoFileId()), messageUids.get(r.getPassMessageId()), r.getContactId(), r.getCreatedAt()));
+                photos.get(r.getPhotoFileId()), messageUids.get(r.getPassMessageId()), r.getContactId(), r.getPaymentStatus(), r.getAmount(),
+                r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt()));
+    }
+
+    private RegistrationDto dto(Registration r) {
+        String title = formRepository.findById(r.getFormId()).map(RegistrationForm::getTitle).orElse(null);
+        String messageUid = r.getPassMessageId() == null ? null : messageRepository.findById(r.getPassMessageId()).map(Message::getUid).orElse(null);
+        String photo = r.getPhotoFileId() == null ? null : fileRepository.findById(r.getPhotoFileId()).map(x -> "/api/files/" + x.getUid()).orElse(null);
+        return new RegistrationDto(r.getUid(), r.getFormId(), title, r.getPassNo(), r.getName(), r.getPhone(), r.getPassStatus(),
+                r.getPassError(), r.getPassFileId() == null ? null : passUrl(r), photo, messageUid, r.getContactId(), r.getPaymentStatus(),
+                r.getAmount(), r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt());
     }
 
     /** RG2: send the pass again (e.g. after it failed or the template was approved later). */
@@ -367,21 +551,27 @@ public class RegistrationService {
         if (r.getPassFileId() == null) {
             throw AppException.conflict("Passes are switched off for this link");
         }
+        if (r.getPassNo() == null) {
+            throw AppException.conflict("The registration fee is not paid yet");
+        }
         sendPass(r.getId(), false);
-        return tx.execute(s -> list(partnerId, null, r.getPassNo(), null, 0, 1).content().get(0));
+        return tx.execute(s -> dto(repository.findById(r.getId()).orElseThrow()));
     }
 
     /** RG3: regenerate the pass image (after a design or name change) - the old file is kept for sent messages. */
     @Transactional
     public RegistrationDto regenerate(Long partnerId, String uid) {
         Registration r = repository.findByUidAndPartnerId(uid, partnerId).orElseThrow(() -> AppException.notFound("Registration"));
+        if (r.getPassNo() == null) {
+            throw AppException.conflict("The registration fee is not paid yet");
+        }
         RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
         r.setPassFileId(renderPass(f, r).getId());
         if (r.getPassStatus() == PassStatus.DISABLED) {
             r.setPassStatus(PassStatus.PENDING);
         }
-        repository.save(r);
-        return list(partnerId, null, r.getPassNo(), null, 0, 1).content().get(0);
+        repository.saveAndFlush(r);
+        return dto(r);
     }
 
     @Transactional(readOnly = true)

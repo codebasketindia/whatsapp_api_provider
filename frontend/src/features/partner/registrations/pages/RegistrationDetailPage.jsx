@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Download, ExternalLink, Image, Megaphone, MoreVertical, Pencil, RefreshCw, Send, Share2 } from 'lucide-react';
+import { BadgeIndianRupee, Download, ExternalLink, Image, Megaphone, MoreVertical, Pencil, RefreshCw, Send, Share2 } from 'lucide-react';
 import * as regApi from '../../../../api/endpoints/registrations';
 import { getErrorMessage } from '../../../../api/axios';
 import {
   Badge, Button, Card, CopyButton, DataTable, DateTime, DropdownMenu, IconButton, Input, Modal, PageHeader, QueryState, SearchInput, Select, StatCard, StatusBadge,
 } from '../../../../components/ui';
-import { formatNumber, formatPhone } from '../../../../lib/format';
+import { formatMoney, formatNumber, formatPhone } from '../../../../lib/format';
 import { istLocalToIso, nowIstLocal } from '../../campaigns/components/schedule';
 import MessageBuilder from '../components/MessageBuilder';
-import { PASS_STATUS_LABEL } from '../components/regHelpers';
+import { PASS_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../components/regHelpers';
 
 function BroadcastModal({ form, open, onClose }) {
   const [at, setAt] = useState(nowIstLocal(10));
@@ -71,6 +71,14 @@ export default function RegistrationDetailPage() {
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
+  const check = useMutation({
+    mutationFn: (r) => regApi.checkPayment(r.uid),
+    onSuccess: (res) => {
+      toast(res.message, { icon: res.data?.paymentStatus === 'PAID' ? '✅' : 'ℹ️' });
+      refresh();
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
   const regen = useMutation({
     mutationFn: (r) => regApi.regeneratePass(r.uid),
     onSuccess: () => {
@@ -107,6 +115,7 @@ export default function RegistrationDetailPage() {
               </div>
               <p className="mt-3 text-xs text-muted">
                 {f.passEnabled ? (f.passTemplateId ? 'Passes are sent instantly with your approved template.' : 'No pass template: the pass is sent when the person taps “Get my pass on WhatsApp”.') : 'Passes are switched off.'}
+                {f.feeAmount ? ` Fee ${formatMoney(f.feeAmount)} — the pass is created only after payment.` : ''}
                 {f.followUps?.length ? ` ${f.followUps.length} follow-up message(s) are scheduled for each person.` : ''}
               </p>
             </Card>
@@ -126,20 +135,28 @@ export default function RegistrationDetailPage() {
             rowKey={(r) => r.uid}
             empty={{ title: 'No registrations yet', text: 'Share the link to start.' }}
             columns={[
-              { key: 'passNo', header: 'Pass no.', primary: true, render: (r) => <span className="whitespace-nowrap font-mono text-sm">{r.passNo}</span> },
+              { key: 'passNo', header: 'Pass no.', primary: true, render: (r) => <span className="whitespace-nowrap font-mono text-sm">{r.passNo || '—'}</span> },
               { key: 'name', header: 'Name' },
               { key: 'phone', header: 'WhatsApp', render: (r) => formatPhone(r.phone) },
               { key: 'passStatus', header: 'Pass', render: (r) => (
                 <span title={r.passError || undefined}><StatusBadge status={r.passStatus} label={PASS_STATUS_LABEL[r.passStatus]} /></span>
               ) },
+              ...(f.feeAmount || regs.data?.content?.some((r) => r.paymentStatus !== 'NOT_REQUIRED') ? [{
+                key: 'payment', header: 'Payment', render: (r) => (
+                  <span title={r.paymentId || undefined} className="whitespace-nowrap">
+                    <StatusBadge status={r.paymentStatus === 'PAID' ? 'PAID' : r.paymentStatus} label={`${PAYMENT_STATUS_LABEL[r.paymentStatus]}${r.amount ? ` · ${formatMoney(r.amount)}` : ''}`} />
+                  </span>
+                ),
+              }] : []),
               { key: 'createdAt', header: 'Registered', hideOnMobile: true, render: (r) => <DateTime value={r.createdAt} /> },
               { key: 'actions', header: '', align: 'right', render: (r) => (
                 <DropdownMenu
                   trigger={({ toggle }) => <IconButton icon={MoreVertical} label={`Actions for ${r.name}`} onClick={toggle} />}
                   items={[
+                    (r.paymentStatus === 'PENDING' || r.paymentStatus === 'FAILED') && { label: 'Check payment', icon: BadgeIndianRupee, onClick: () => check.mutate(r) },
                     r.passUrl && { label: 'View pass', icon: Image, onClick: () => setViewing(r) },
                     r.passUrl && { label: 'Send pass again', icon: Send, onClick: () => resend.mutate(r) },
-                    { label: 'Create pass again', icon: RefreshCw, onClick: () => regen.mutate(r) },
+                    r.passNo && { label: 'Create pass again', icon: RefreshCw, onClick: () => regen.mutate(r) },
                   ].filter(Boolean)}
                 />
               ) },

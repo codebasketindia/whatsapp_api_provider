@@ -18,6 +18,7 @@ import { HARMAIN_LAYOUT, slugify } from '../components/regHelpers';
 const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
+  feeAmount: '', feeLabel: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -32,6 +33,8 @@ const fromDto = (f) => ({
   description: f.description || '',
   successMessage: f.successMessage || '',
   passCaption: f.passCaption || '',
+  feeAmount: f.feeAmount ?? '',
+  feeLabel: f.feeLabel || '',
 });
 
 function toBody(v) {
@@ -57,6 +60,8 @@ function toBody(v) {
     contactGroupId: v.contactGroupId === '' ? null : Number(v.contactGroupId),
     contactTags: v.contactTags,
     followUps: v.followUps,
+    feeAmount: v.feeAmount === '' ? null : Number(v.feeAmount),
+    feeLabel: v.feeLabel?.trim() || null,
   };
 }
 
@@ -70,6 +75,8 @@ function Editor({ initial, id }) {
   useEffect(() => {
     if (!v.senderId && senders.data?.length) set({ senderId: defaultSenderId(senders.data) });
   }, [senders.data, v.senderId]);
+  const account = useQuery({ queryKey: ['partner', 'payment-account'], queryFn: regApi.getPaymentAccount });
+  const paymentsReady = Boolean(account.data?.enabled && account.data?.keySecretSet);
   const groups = useQuery({ queryKey: ['partner', 'contact-groups', 'all'], queryFn: () => contactsApi.listContactGroups({ size: 100 }) });
 
   const save = useMutation({
@@ -111,6 +118,14 @@ function Editor({ initial, id }) {
                     onChange={(e) => set({ successMessage: e.target.value })} />
           <Switch checked={v.collectPhoto} onChange={(c) => set({ collectPhoto: c })} label="Ask for a photo (optional for the person)"
                   description="The photo is printed in the photo box of the pass." />
+        </div>
+      </Card>
+      <Card title="Registration fee" subtitle="Leave empty for a free registration. With a fee, the pass is created and sent only after payment.">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Input type="number" min={1} step="0.01" label="Fee (₹)" value={v.feeAmount} error={errors.feeAmount}
+                 placeholder="Free" onChange={(e) => set({ feeAmount: e.target.value })}
+                 hint={paymentsReady ? 'Paid into your Razorpay account.' : 'Connect Razorpay on the Registrations page first.'} />
+          <Input label="Shown as" maxLength={120} value={v.feeLabel} placeholder="e.g. Ziyarat show entry" onChange={(e) => set({ feeLabel: e.target.value })} />
         </div>
       </Card>
       <PassDesignCard value={v} onChange={(next) => setV(next)} senderId={v.senderId} />

@@ -47,6 +47,30 @@ public class RegistrationController {
     private final RegistrationFormService formService;
     private final RegistrationService service;
     private final LoginRateLimiter rateLimiter;
+    private final PartnerPaymentService payments;
+
+    public record VerifyRequest(@jakarta.validation.constraints.NotBlank String registrationUid,
+                                @jakarta.validation.constraints.NotBlank String razorpayOrderId,
+                                @jakarta.validation.constraints.NotBlank String razorpayPaymentId,
+                                @jakarta.validation.constraints.NotBlank String razorpaySignature) {
+    }
+
+    // ---------------------------------------------------------------- partner: Razorpay account (PA1–PA3)
+
+    @GetMapping("/api/partner/payment-account")
+    public ApiResponse<PartnerPaymentService.AccountDto> paymentAccount() {
+        return ApiResponse.ok(payments.get(SecurityUtils.currentPartnerId()));
+    }
+
+    @PutMapping("/api/partner/payment-account")
+    public ApiResponse<PartnerPaymentService.AccountDto> savePaymentAccount(@Valid @RequestBody PartnerPaymentService.AccountRequest req) {
+        return ApiResponse.ok(payments.save(SecurityUtils.currentPartnerId(), req), "Razorpay settings saved");
+    }
+
+    @PostMapping("/api/partner/payment-account/test")
+    public ApiResponse<PartnerPaymentService.AccountDto> testPaymentAccount() {
+        return ApiResponse.ok(payments.testNow(SecurityUtils.currentPartnerId()), "Razorpay keys are working");
+    }
 
     // ---------------------------------------------------------------- partner: links (RF1–RF9)
 
@@ -95,10 +119,12 @@ public class RegistrationController {
 
     @GetMapping("/api/partner/registration-forms/{id}/export")
     public ResponseEntity<byte[]> export(@PathVariable Long id) {
-        StringBuilder sb = new StringBuilder("Pass No,Name,Mobile,Pass status,Registered at\n");
+        StringBuilder sb = new StringBuilder("Pass No,Name,Mobile,Pass status,Payment,Amount,Razorpay payment id,Registered at\n");
         for (Registration r : service.export(SecurityUtils.currentPartnerId(), id)) {
             sb.append(csv(r.getPassNo())).append(',').append(csv(r.getName())).append(',').append(csv("+" + r.getPhone())).append(',')
-                    .append(r.getPassStatus()).append(',').append(r.getCreatedAt()).append('\n');
+                    .append(r.getPassStatus()).append(',').append(r.getPaymentStatus()).append(',')
+                    .append(r.getAmount() == null ? "" : r.getAmount().toPlainString()).append(',').append(csv(r.getRazorpayPaymentId()))
+                    .append(',').append(r.getCreatedAt()).append('\n');
         }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"registrations-" + id + ".csv\"")
@@ -125,6 +151,12 @@ public class RegistrationController {
             case WAITING_FOR_CHAT -> "The customer must message you first (or set a pass template)";
             default -> "Pass could not be sent";
         });
+    }
+
+    @PostMapping("/api/partner/registrations/{uid}/check-payment")
+    public ApiResponse<RegistrationDto> checkPayment(@PathVariable String uid) {
+        RegistrationDto dto = service.checkPayment(SecurityUtils.currentPartnerId(), uid);
+        return ApiResponse.ok(dto, dto.paymentStatus() == PaymentStatus.PAID ? "Payment received - pass created" : "No completed payment yet");
     }
 
     @PostMapping("/api/partner/registrations/{uid}/regenerate")
@@ -154,6 +186,13 @@ public class RegistrationController {
         }
         return ApiResponse.created(service.register(slug, name, mobile, consent, photo, ip, request.getHeader(HttpHeaders.USER_AGENT)),
                 "Registered");
+    }
+
+    @PostMapping("/api/public/register/{slug}/verify-payment")
+    public ApiResponse<RegisterResult> verifyPayment(@PathVariable String slug, @Valid @RequestBody VerifyRequest req, HttpServletRequest request) {
+        rateLimiter.check("register-verify", ClientIp.of(request));
+        return ApiResponse.ok(service.verifyPayment(slug, req.registrationUid(), req.razorpayOrderId(), req.razorpayPaymentId(),
+                req.razorpaySignature()), "Payment received");
     }
 
     @GetMapping(value = "/api/public/passes/{uid}.jpg", produces = MediaType.IMAGE_JPEG_VALUE)

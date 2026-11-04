@@ -26,3 +26,12 @@ export const regeneratePass = (uid) => api.post(`/partner/registrations/${uid}/r
 export const getPublicForm = (slug) => api.get(`/public/register/${encodeURIComponent(slug)}`).then(unwrap);
 export const register = (slug, values) =>
   api.post(`/public/register/${encodeURIComponent(slug)}`, toFormData(values), { headers: { 'Content-Type': 'multipart/form-data' } }).then(unwrap);
+
+// PA1–PA3: partner's own Razorpay account (registration fees)
+export const getPaymentAccount = () => api.get('/partner/payment-account').then(unwrap);
+export const savePaymentAccount = (body) => api.put('/partner/payment-account', body).then(unwrap);
+export const testPaymentAccount = () => api.post('/partner/payment-account/test').then(unwrap);
+export const checkPayment = (uid) => api.post(`/partner/registrations/${uid}/check-payment`).then((res) => res.data);
+
+// PR4: confirm the Razorpay checkout result (public)
+export const verifyPayment = (slug, body) => api.post(`/public/register/${encodeURIComponent(slug)}/verify-payment`, body).then(unwrap);

@@ -8,6 +8,8 @@ import { CheckCircle2, Download, MessageCircle } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { getErrorMessage, getFieldErrors } from '../../../api/axios';
 import { Alert, Button, Checkbox, FileUpload, Input, PhoneInput, Spinner, isIndianMobile } from '../../../components/ui';
+import { openCheckout } from '../../../lib/razorpay';
+import { formatMoney } from '../../../lib/format';
 import { passStatusText } from './registerHelpers';
 
 const schema = z.object({
@@ -31,13 +33,46 @@ export default function RegisterPage() {
   const form = useQuery({ queryKey: ['public', 'register', slug], queryFn: () => regApi.getPublicForm(slug), retry: false });
   const [photo, setPhoto] = useState(null);
   const [done, setDone] = useState(null);
+  const [paying, setPaying] = useState(false);
   const { control, register, handleSubmit, setError, formState } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { name: '', mobile: '', consent: false },
   });
+  /** Paid links: Razorpay checkout in the partner's account; the server verifies before the pass is made. */
+  const pay = async (res) => {
+    const p = res.payment;
+    setPaying(true);
+    try {
+      const out = await openCheckout({
+        key: p.keyId,
+        order_id: p.orderId,
+        amount: p.amount,
+        currency: p.currency || 'INR',
+        name: p.name,
+        description: p.description,
+        prefill: { name: res.name, contact: res.mobile },
+        theme: { color: '#0b5a2e' },
+      });
+      if (out.status !== 'success') {
+        setError('root', { message: out.status === 'failed' ? `Payment failed: ${out.error?.description || 'please try again'}` : 'Payment was not completed. Tap the button to try again.' });
+        return;
+      }
+      const verified = await regApi.verifyPayment(slug, {
+        registrationUid: res.uid,
+        razorpayOrderId: out.razorpay_order_id,
+        razorpayPaymentId: out.razorpay_payment_id,
+        razorpaySignature: out.razorpay_signature,
+      });
+      setDone(verified);
+    } catch (e) {
+      setError('root', { message: getErrorMessage(e) });
+    } finally {
+      setPaying(false);
+    }
+  };
   const submit = useMutation({
     mutationFn: (v) => regApi.register(slug, { name: v.name.trim(), mobile: v.mobile, consent: true, photo: photo || undefined, website: '' }),
-    onSuccess: setDone,
+    onSuccess: (res) => (res.paymentStatus === 'PENDING' && res.payment ? pay(res) : setDone(res)),
     onError: (e) => {
       const fields = getFieldErrors(e);
       Object.entries(fields).forEach(([k, msg]) => setError(k, { message: msg }));
@@ -70,6 +105,9 @@ export default function RegisterPage() {
           <p className="mt-1 text-sm text-gray-700">
             {done.successMessage || `Thank you ${done.name}. Your pass number is ${done.passNo}.`}
           </p>
+          {done.paymentStatus === 'PAID' && done.amount && (
+            <p className="mt-2 inline-block rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-800">Payment of {formatMoney(done.amount)} received</p>
+          )}
           <p className="mt-2 text-sm font-medium text-gray-800">{passStatusText(done.passStatus)}</p>
           {done.passUrl && (
             <>
@@ -110,7 +148,7 @@ export default function RegisterPage() {
               control={control}
               render={({ field }) => (
                 <PhoneInput label="WhatsApp mobile number" required value={field.value} onChange={field.onChange}
-                            hint="Your free pass is sent to this WhatsApp number." error={formState.errors.mobile?.message} />
+                            hint={f.feeAmount ? "Your pass is sent to this WhatsApp number after payment." : "Your free pass is sent to this WhatsApp number."} error={formState.errors.mobile?.message} />
               )}
             />
             {f.collectPhoto && (
@@ -127,10 +165,17 @@ export default function RegisterPage() {
             />
             {/* Honeypot: hidden from people, bots fill it in. */}
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+            {f.feeAmount && (
+              <div className="flex items-center justify-between rounded-xl border border-[#d4af37] bg-[#fff8e1] px-4 py-3">
+                <span className="text-sm font-medium text-gray-800">{f.feeLabel || 'Registration fee'}</span>
+                <span className="text-lg font-bold text-[#0b5a2e]">{formatMoney(f.feeAmount)}</span>
+              </div>
+            )}
             {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}
-            <Button type="submit" className="w-full !bg-[#0b5a2e] hover:!bg-[#0e6b37]" size="lg" loading={submit.isPending}>
-              {f.passEnabled ? 'Get my free pass' : 'Register'}
+            <Button type="submit" className="w-full !bg-[#0b5a2e] hover:!bg-[#0e6b37]" size="lg" loading={submit.isPending || paying}>
+              {f.feeAmount ? `Pay ${formatMoney(f.feeAmount)} & get my pass` : f.passEnabled ? 'Get my free pass' : 'Register'}
             </Button>
+            {f.feeAmount && <p className="text-center text-xs text-gray-500">Secure payment by Razorpay (UPI, card, net banking). Your pass is created as soon as the payment is confirmed.</p>}
           </form>
         )}
       </div>

@@ -68,9 +68,17 @@ export function slugify(title) {
 }
 
 export const PASS_STATUS_LABEL = {
+  AWAITING_PAYMENT: 'Waiting for payment',
   PENDING: 'Sending',
   SENT: 'Sent on WhatsApp',
   WAITING_FOR_CHAT: 'Waiting for customer to message',
   FAILED: 'Not sent',
   DISABLED: 'No pass',
+};
+
+export const PAYMENT_STATUS_LABEL = {
+  NOT_REQUIRED: 'Free',
+  PENDING: 'Not paid yet',
+  PAID: 'Paid',
+  FAILED: 'Payment failed',
 };

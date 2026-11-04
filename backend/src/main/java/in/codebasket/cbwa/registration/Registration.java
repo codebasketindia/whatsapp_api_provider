@@ -26,7 +26,7 @@ public class Registration extends BaseEntity {
     @Column(nullable = false)
     private Long partnerId;
 
-    @Column(nullable = false)
+    /** Given when the registration is complete (for paid links: after payment). */
     private String passNo;
 
     @Column(nullable = false)
@@ -52,6 +52,16 @@ public class Registration extends BaseEntity {
 
     @Column(nullable = false)
     private Instant consentAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentStatus paymentStatus = PaymentStatus.NOT_REQUIRED;
+
+    private java.math.BigDecimal amount;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
+    private String paymentMethod;
+    private Instant paidAt;
 
     private String ip;
     private String userAgent;

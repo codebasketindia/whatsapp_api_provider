@@ -29,8 +29,9 @@ Full steps: [docs/local-setup.md](docs/local-setup.md) · Production: [docs/depl
 | 12 | Hardening & go-live kit | ✅ | systemd/Nginx/SSL/backup scripts, prod-profile JAR run, Playwright crawl of 90 screens at 390 px & 1280 px with zero API/JS errors |
 | 13 | AI Assistant (knowledge-only replies, photo/video attachments, handover) + scheduled messages & campaign reschedule | ✅ | `AiAssistantIT` (Claude mocked), `ScheduledMessageIT`, `CampaignFlowIT` — live AI needs your Anthropic API key |
 | 14 | Public registration link + free pass image (Harmain design), follow-ups, OpenAI/Claude AI grounded in travel packages & bookings, support-number handover | ✅ | `RegistrationIT`, `AiAssistantIT`, `OpenAiAiClientTest`; browser: register at 390 px → pass generated, duplicate blocked |
+| 15 | Paid registrations: partner's own Razorpay keys, fee per link, pass + WhatsApp only after verified payment (checkout signature, partner webhook, reconcile job) | ✅ | `PaidRegistrationIT` (Razorpay stubbed) — live payment needs the partner's Razorpay keys |
 
-Automated: **114 backend tests** (real MySQL 8) and **78 frontend tests**, all green.
+Automated: **115 backend tests** (real MySQL 8) and **79 frontend tests**, all green.
 
 **Needs your accounts/domain to finish go-live** (cannot be done from the build environment): a real WhatsApp
 message to your phone (Meta app + number), Embedded Signup with a real partner, Razorpay test-mode payment,

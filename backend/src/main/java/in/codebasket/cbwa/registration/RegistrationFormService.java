@@ -62,6 +62,7 @@ public class RegistrationFormService {
     private final PassRenderer renderer;
     private final ScheduledMessageService scheduledService;
     private final AppProperties props;
+    private final PartnerPaymentService payments;
 
     public record SenderRef(Long id, String displayPhoneNumber) {
     }
@@ -74,7 +75,7 @@ public class RegistrationFormService {
                           boolean collectPhoto, boolean passEnabled, String passDesign, FileRef passDesignFile, PassLayout passLayout,
                           String passPrefix, Long passTemplateId, List<String> passTemplateBody, String passCaption,
                           Long contactGroupId, List<String> contactTags, List<FollowUp> followUps, int registrationsCount,
-                          Instant createdAt, Instant updatedAt) {
+                          java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -85,7 +86,10 @@ public class RegistrationFormService {
                               @Pattern(regexp = "^[A-Z0-9]{1,10}$", message = "Use up to 10 capital letters or digits") String passPrefix,
                               Long passTemplateId, @Size(max = 10) List<@Size(max = 200) String> passTemplateBody,
                               @Size(max = 1000) String passCaption, Long contactGroupId, @Size(max = 10) List<@Size(max = 40) String> contactTags,
-                              @Size(max = 20) List<@Valid FollowUp> followUps) {
+                              @Size(max = 20) List<@Valid FollowUp> followUps,
+                              @jakarta.validation.constraints.DecimalMin(value = "0") @jakarta.validation.constraints.DecimalMax("500000")
+                              @jakarta.validation.constraints.Digits(integer = 6, fraction = 2) java.math.BigDecimal feeAmount,
+                              @Size(max = 120) String feeLabel) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -163,6 +167,9 @@ public class RegistrationFormService {
         int scheduled = 0;
         int skipped = 0;
         for (Registration r : registrationRepository.findByFormIdOrderByIdAsc(f.getId())) {
+            if (r.getPassNo() == null) {
+                continue; // unpaid: not registered yet
+            }
             var v = Placeholders.of(r.getName(), "+" + r.getPhone(), r.getPassNo());
             if (scheduledService.scheduleForRegistration(partnerId, sender, r.getPhone(),
                     Placeholders.apply(req.message(), sender.getId(), r.getPhone(), v), req.scheduledAt(), r.getId())) {
@@ -276,6 +283,19 @@ public class RegistrationFormService {
             validateMessage(partnerId, sender, u.message(), "followUps[" + i + "].message");
         }
         f.setFollowUps(new ArrayList<>(ups));
+
+        if (req.feeAmount() != null && req.feeAmount().signum() > 0) {
+            if (req.feeAmount().compareTo(java.math.BigDecimal.ONE) < 0) {
+                throw AppException.field("feeAmount", "The fee must be at least ₹1");
+            }
+            if (!payments.ready(partnerId)) {
+                throw AppException.field("feeAmount", "Connect your Razorpay account first (Registrations → Online payments)");
+            }
+            f.setFeeAmount(req.feeAmount().setScale(2, java.math.RoundingMode.HALF_UP));
+        } else {
+            f.setFeeAmount(null);
+        }
+        f.setFeeLabel(trimToNull(req.feeLabel()));
     }
 
     /** Builds the message for a sample recipient so template/variable/media mistakes show up while saving. */
@@ -342,7 +362,7 @@ public class RegistrationFormService {
                 f.getMaxRegistrations(), f.getConsentText(), f.getSuccessMessage(), f.isCollectPhoto(), f.isPassEnabled(),
                 f.getPassDesign(), design, f.getPassLayout(), f.getPassPrefix(), f.getPassTemplateId(), f.getPassTemplateBody(),
                 f.getPassCaption(), f.getContactGroupId(), f.getContactTags(), f.getFollowUps(), f.getRegistrationsCount(),
-                f.getCreatedAt(), f.getUpdatedAt());
+                f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt());
     }
 
     String publicUrl(String slug) {

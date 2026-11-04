@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxValid, delayToMinutes, followUpTiming, fromPct, messageSummary, minutesToDelay, slugify, toPct, HARMAIN_LAYOUT } from './regHelpers';
+import { PAYMENT_STATUS_LABEL, PASS_STATUS_LABEL, boxValid, delayToMinutes, followUpTiming, fromPct, messageSummary, minutesToDelay, slugify, toPct, HARMAIN_LAYOUT } from './regHelpers';
 
 describe('registration helpers', () => {
   it('converts delays both ways', () => {
@@ -30,5 +30,10 @@ describe('registration helpers', () => {
 
   it('makes link names', () => {
     expect(slugify('Free Harmain Ziyarat Pass 2027!')).toBe('free-harmain-ziyarat-pass-2027');
+  });
+
+  it('labels payment and pass states', () => {
+    expect(PAYMENT_STATUS_LABEL.PENDING).toBe('Not paid yet');
+    expect(PASS_STATUS_LABEL.AWAITING_PAYMENT).toBe('Waiting for payment');
   });
 });

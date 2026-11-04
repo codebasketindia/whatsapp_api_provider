@@ -464,12 +464,13 @@ public class AiService {
             formRepository.findAllById(regs.stream().map(in.codebasket.cbwa.registration.Registration::getFormId).toList())
                     .forEach(f -> titles.put(f.getId(), f.getTitle()));
             for (var r : regs) {
-                sb.append("Registered: ").append(titles.getOrDefault(r.getFormId(), "registration")).append(", pass ").append(r.getPassNo())
+                sb.append("Registered: ").append(titles.getOrDefault(r.getFormId(), "registration")).append(r.getPassNo() == null ? "" : ", pass " + r.getPassNo())
                         .append(", pass ").append(switch (r.getPassStatus()) {
                             case SENT -> "sent on WhatsApp";
                             case WAITING_FOR_CHAT, PENDING -> "being sent";
                             case FAILED -> "not delivered yet (our team will resend)";
                             case DISABLED -> "not issued";
+                            case AWAITING_PAYMENT -> "not issued yet - registration fee not paid";
                         }).append('\n');
             }
         }
