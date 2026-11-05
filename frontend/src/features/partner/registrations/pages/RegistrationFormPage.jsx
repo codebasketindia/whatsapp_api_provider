@@ -125,7 +125,8 @@ function Editor({ initial, id }) {
           <Input type="number" min={1} step="0.01" label="Fee (₹)" value={v.feeAmount} error={errors.feeAmount}
                  placeholder="Free" onChange={(e) => set({ feeAmount: e.target.value })}
                  hint={paymentsReady ? 'Paid into your Razorpay account.' : 'Connect Razorpay on the Registrations page first.'} />
-          <Input label="Shown as" maxLength={120} value={v.feeLabel} placeholder="e.g. Ziyarat show entry" onChange={(e) => set({ feeLabel: e.target.value })} />
+          <Input label="Fee name" maxLength={120} value={v.feeLabel} placeholder="Registration fee" onChange={(e) => set({ feeLabel: e.target.value })}
+                 hint={`Shown next to the amount on the registration page and in Razorpay: “${v.feeLabel?.trim() || 'Registration fee'}”. e.g. Entry pass, Seminar ticket, Umrah booking advance.`} />
         </div>
       </Card>
       <PassDesignCard value={v} onChange={(next) => setV(next)} senderId={v.senderId} />
