@@ -1,7 +1,14 @@
 package in.codebasket.cbwa.wallet;
 
-import in.codebasket.cbwa.common.exception.AppException;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.constants.WalletRefType;
+import in.codebasket.cbwa.common.entity.Wallet;
+import in.codebasket.cbwa.common.entity.WalletTransaction;
+import in.codebasket.cbwa.common.repository.WalletRepository;
+import in.codebasket.cbwa.common.repository.WalletTransactionRepository;
+import in.codebasket.cbwa.common.service.wallet.WalletService;
+
+import in.codebasket.cbwa.exception.AppException;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

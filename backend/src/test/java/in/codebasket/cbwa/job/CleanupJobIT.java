@@ -1,13 +1,15 @@
 package in.codebasket.cbwa.job;
 
-import in.codebasket.cbwa.common.util.Ulids;
-import in.codebasket.cbwa.partner.Partner;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
-import in.codebasket.cbwa.sender.PhoneNumber;
+import in.codebasket.cbwa.common.job.CleanupJob;
+
+import in.codebasket.cbwa.common.utils.Ulids;
+import in.codebasket.cbwa.common.entity.Partner;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
-import in.codebasket.cbwa.user.User;
-import in.codebasket.cbwa.waba.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.User;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

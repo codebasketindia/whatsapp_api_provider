@@ -2,16 +2,16 @@ package in.codebasket.cbwa.security;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import in.codebasket.cbwa.common.crypto.HashUtil;
-import in.codebasket.cbwa.publicapi.ApiKey;
-import in.codebasket.cbwa.publicapi.ApiKeyRepository;
-import in.codebasket.cbwa.publicapi.ApiKeyStatus;
+import in.codebasket.cbwa.common.utils.HashUtil;
+import in.codebasket.cbwa.common.entity.ApiKey;
+import in.codebasket.cbwa.common.repository.ApiKeyRepository;
+import in.codebasket.cbwa.common.constants.ApiKeyStatus;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.user.User;
-import in.codebasket.cbwa.user.UserRepository;
-import in.codebasket.cbwa.user.UserStatus;
-import in.codebasket.cbwa.webhook.WebhookInboundLogRepository;
+import in.codebasket.cbwa.common.entity.User;
+import in.codebasket.cbwa.common.repository.UserRepository;
+import in.codebasket.cbwa.common.constants.UserStatus;
+import in.codebasket.cbwa.common.repository.WebhookInboundLogRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.AfterAll;
@@ -69,7 +69,7 @@ class SecurityAttacksIT extends AbstractIntegrationTest {
     @Autowired UserRepository userRepository;
     @Autowired ApiKeyRepository apiKeyRepository;
     @Autowired WebhookInboundLogRepository inboundLogRepository;
-    @Autowired in.codebasket.cbwa.webhook.WebhookInboundProcessor processor;
+    @Autowired in.codebasket.cbwa.webhook.service.WebhookInboundProcessor processor;
 
     TortureFixtures.World w;
 
@@ -275,7 +275,7 @@ class SecurityAttacksIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/webhooks/whatsapp").contentType(MediaType.APPLICATION_JSON).content(good)
                 .header("X-Hub-Signature-256", "sha256=" + HashUtil.hmacSha256Hex(TortureFixtures.APP_SECRET, good))).andExpect(status().isOk());
         processor.processPending(); // junk rows are marked IGNORED/FAILED, never crash the processor
-        assertThat(inboundLogRepository.findAll()).allMatch(l -> l.getStatus() != in.codebasket.cbwa.webhook.InboundLogStatus.RECEIVED);
+        assertThat(inboundLogRepository.findAll()).allMatch(l -> l.getStatus() != in.codebasket.cbwa.common.constants.InboundLogStatus.RECEIVED);
         mockMvc.perform(get("/api/partner/inbox/conversations").header("Authorization", "Bearer " + w.a.token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[?(@.waId=='919812300001')]").exists());
     }

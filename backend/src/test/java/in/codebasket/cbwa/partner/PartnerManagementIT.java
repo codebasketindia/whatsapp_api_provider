@@ -1,14 +1,16 @@
 package in.codebasket.cbwa.partner;
 
+import in.codebasket.cbwa.common.entity.Partner;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
-import in.codebasket.cbwa.sender.PhoneNumber;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.user.User;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
+import in.codebasket.cbwa.common.entity.User;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 

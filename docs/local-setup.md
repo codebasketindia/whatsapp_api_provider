@@ -20,11 +20,13 @@ GRANT ALL ON cbwa_test.* TO 'cbwa_app'@'localhost'; FLUSH PRIVILEGES;"
 ## 3. Backend
 ```bash
 cd backend
-mvn spring-boot:run            # dev profile: http://localhost:8080
+mvn spring-boot:run            # local profile (default): http://localhost:8080
 ```
-The **dev** profile has built-in development-only secrets and creates the super admin
+The **local** profile (`application-local.properties`) has built-in development-only secrets and creates the super admin
 mobile `9999999999` / password `Admin@12345` (email `admin@cbwa.local`). Everyone logs in with mobile number + password. OTP codes are printed in the console (dev only) so you can test 2FA and
 forgot-password without SMTP. Flyway creates all tables on first start.
+To use another database set `CBWA_DB_URL`, `CBWA_DB_USERNAME`, `CBWA_DB_PASSWORD` in your shell or IDE run configuration —
+never write real credentials into `application-local.properties`.
 
 Swagger UI: http://localhost:8080/swagger-ui.html · Health: http://localhost:8080/actuator/health
 

@@ -1,5 +1,0 @@
-package in.codebasket.cbwa.messaging;
-
-public enum MessageType {
-    TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, STICKER, LOCATION, CONTACTS, REACTION, INTERACTIVE, TEMPLATE, UNSUPPORTED, SYSTEM, BUTTON, ORDER
-}

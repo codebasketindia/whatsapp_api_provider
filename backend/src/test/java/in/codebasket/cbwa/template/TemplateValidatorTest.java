@@ -1,10 +1,14 @@
 package in.codebasket.cbwa.template;
 
+import in.codebasket.cbwa.common.constants.ParameterFormat;
+import in.codebasket.cbwa.common.service.template.TemplatePayloads;
+import in.codebasket.cbwa.common.service.template.TemplateValidator;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import in.codebasket.cbwa.common.exception.AppException;
-import in.codebasket.cbwa.common.util.JsonUtil;
-import in.codebasket.cbwa.template.dto.TemplateDtos.ButtonDto;
-import in.codebasket.cbwa.template.dto.TemplateDtos.ComponentDto;
+import in.codebasket.cbwa.exception.AppException;
+import in.codebasket.cbwa.common.utils.JsonUtil;
+import in.codebasket.cbwa.common.dto.TemplateDtos.ButtonDto;
+import in.codebasket.cbwa.common.dto.TemplateDtos.ComponentDto;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

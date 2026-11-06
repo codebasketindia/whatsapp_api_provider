@@ -1,9 +1,12 @@
 package in.codebasket.cbwa.meta;
 
+import in.codebasket.cbwa.common.entity.MetaSettings;
+import in.codebasket.cbwa.common.repository.MetaSettingsRepository;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import in.codebasket.cbwa.common.crypto.CryptoService;
-import in.codebasket.cbwa.common.domain.BillingMode;
+import in.codebasket.cbwa.common.service.crypto.CryptoService;
+import in.codebasket.cbwa.common.constants.BillingMode;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;

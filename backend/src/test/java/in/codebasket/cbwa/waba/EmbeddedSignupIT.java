@@ -1,14 +1,18 @@
 package in.codebasket.cbwa.waba;
 
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
+import in.codebasket.cbwa.common.repository.WhatsappAccountRepository;
+
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
 import in.codebasket.cbwa.meta.MetaTestBase;
-import in.codebasket.cbwa.partner.Partner;
-import in.codebasket.cbwa.partner.PartnerRepository;
-import in.codebasket.cbwa.sender.PartnerPhoneNumberRepository;
-import in.codebasket.cbwa.sender.PhoneNumber;
-import in.codebasket.cbwa.sender.PhoneNumberRepository;
-import in.codebasket.cbwa.sender.SenderStatus;
+import in.codebasket.cbwa.common.entity.Partner;
+import in.codebasket.cbwa.common.repository.PartnerRepository;
+import in.codebasket.cbwa.common.repository.PartnerPhoneNumberRepository;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
+import in.codebasket.cbwa.common.repository.PhoneNumberRepository;
+import in.codebasket.cbwa.common.constants.SenderStatus;
 import in.codebasket.cbwa.support.TestData;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.Test;

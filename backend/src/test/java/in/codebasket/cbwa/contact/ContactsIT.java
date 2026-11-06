@@ -1,7 +1,7 @@
 package in.codebasket.cbwa.contact;
 
-import in.codebasket.cbwa.common.storage.FileStorageService;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.service.storage.FileStorageService;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
 import org.junit.jupiter.api.BeforeEach;

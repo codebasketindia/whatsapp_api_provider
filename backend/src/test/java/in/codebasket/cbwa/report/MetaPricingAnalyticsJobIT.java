@@ -1,11 +1,16 @@
 package in.codebasket.cbwa.report;
 
+import in.codebasket.cbwa.common.entity.MetaPricingAnalytics;
+
+import in.codebasket.cbwa.common.job.MetaPricingAnalyticsJob;
+import in.codebasket.cbwa.common.repository.MetaPricingAnalyticsRepository;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.util.TimeUtil;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.utils.TimeUtil;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

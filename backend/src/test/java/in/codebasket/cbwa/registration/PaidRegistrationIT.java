@@ -1,17 +1,23 @@
 package in.codebasket.cbwa.registration;
 
+import in.codebasket.cbwa.common.constants.PassStatus;
+import in.codebasket.cbwa.common.constants.PaymentStatus;
+import in.codebasket.cbwa.common.entity.Registration;
+import in.codebasket.cbwa.common.job.RegistrationPaymentJob;
+import in.codebasket.cbwa.common.repository.RegistrationRepository;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import in.codebasket.cbwa.common.crypto.HashUtil;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
-import in.codebasket.cbwa.partner.Partner;
-import in.codebasket.cbwa.scheduling.ScheduledMessageRepository;
-import in.codebasket.cbwa.sender.PhoneNumber;
+import in.codebasket.cbwa.common.utils.HashUtil;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
+import in.codebasket.cbwa.common.entity.Partner;
+import in.codebasket.cbwa.common.repository.ScheduledMessageRepository;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

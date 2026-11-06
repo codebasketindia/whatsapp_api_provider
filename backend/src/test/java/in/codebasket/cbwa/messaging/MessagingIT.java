@@ -1,36 +1,43 @@
 package in.codebasket.cbwa.messaging;
 
+import in.codebasket.cbwa.common.constants.ChargeStatus;
+import in.codebasket.cbwa.common.constants.MessageStatus;
+import in.codebasket.cbwa.common.entity.Message;
+import in.codebasket.cbwa.common.job.HoldTimeoutJob;
+import in.codebasket.cbwa.common.job.MessageQueueWorker;
+import in.codebasket.cbwa.common.repository.MessageRepository;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
-import in.codebasket.cbwa.common.crypto.CryptoService;
-import in.codebasket.cbwa.common.crypto.HashUtil;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.MessageCategory;
-import in.codebasket.cbwa.common.domain.SenderType;
-import in.codebasket.cbwa.common.settings.SettingsService;
-import in.codebasket.cbwa.common.util.Ulids;
-import in.codebasket.cbwa.meta.MetaSettings;
-import in.codebasket.cbwa.meta.MetaSettingsRepository;
-import in.codebasket.cbwa.partner.Partner;
-import in.codebasket.cbwa.sender.PhoneNumber;
+import in.codebasket.cbwa.common.service.crypto.CryptoService;
+import in.codebasket.cbwa.common.utils.HashUtil;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.MessageCategory;
+import in.codebasket.cbwa.common.constants.SenderType;
+import in.codebasket.cbwa.common.service.settings.SettingsService;
+import in.codebasket.cbwa.common.utils.Ulids;
+import in.codebasket.cbwa.common.entity.MetaSettings;
+import in.codebasket.cbwa.common.repository.MetaSettingsRepository;
+import in.codebasket.cbwa.common.entity.Partner;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.template.ComponentType;
-import in.codebasket.cbwa.template.ParameterFormat;
-import in.codebasket.cbwa.template.Template;
-import in.codebasket.cbwa.template.TemplateComponent;
-import in.codebasket.cbwa.template.TemplateComponentRepository;
-import in.codebasket.cbwa.template.TemplateRepository;
-import in.codebasket.cbwa.template.TemplateStatus;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
-import in.codebasket.cbwa.wallet.Wallet;
-import in.codebasket.cbwa.wallet.WalletRepository;
-import in.codebasket.cbwa.wallet.WalletTransaction;
-import in.codebasket.cbwa.wallet.WalletTransactionRepository;
-import in.codebasket.cbwa.wallet.WalletTxnType;
-import in.codebasket.cbwa.webhook.WebhookInboundProcessor;
+import in.codebasket.cbwa.common.constants.ComponentType;
+import in.codebasket.cbwa.common.constants.ParameterFormat;
+import in.codebasket.cbwa.common.entity.Template;
+import in.codebasket.cbwa.common.entity.TemplateComponent;
+import in.codebasket.cbwa.common.repository.TemplateComponentRepository;
+import in.codebasket.cbwa.common.repository.TemplateRepository;
+import in.codebasket.cbwa.common.constants.TemplateStatus;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
+import in.codebasket.cbwa.common.entity.Wallet;
+import in.codebasket.cbwa.common.repository.WalletRepository;
+import in.codebasket.cbwa.common.entity.WalletTransaction;
+import in.codebasket.cbwa.common.repository.WalletTransactionRepository;
+import in.codebasket.cbwa.common.constants.WalletTxnType;
+import in.codebasket.cbwa.webhook.service.WebhookInboundProcessor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -332,7 +339,7 @@ class MessagingIT extends AbstractIntegrationTest {
     // ------------------------------------------------------------------ account-level webhooks, jobs, admin
 
     @Autowired HoldTimeoutJob holdTimeoutJob;
-    @Autowired in.codebasket.cbwa.sender.PhoneNumberRepository phoneNumberRepository;
+    @Autowired in.codebasket.cbwa.common.repository.PhoneNumberRepository phoneNumberRepository;
 
     @Test
     void templateStatusWebhookPausesTemplateAndBlocksSending() throws Exception {

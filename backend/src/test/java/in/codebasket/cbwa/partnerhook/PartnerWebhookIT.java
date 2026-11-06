@@ -1,9 +1,14 @@
 package in.codebasket.cbwa.partnerhook;
 
+import in.codebasket.cbwa.partner.service.webhook.WebhookSender;
+
+import in.codebasket.cbwa.partner.service.webhook.PartnerWebhookDispatcher;
+import in.codebasket.cbwa.partner.service.webhook.PartnerWebhookService;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
-import in.codebasket.cbwa.partner.Partner;
-import in.codebasket.cbwa.partner.PartnerEvent;
+import in.codebasket.cbwa.common.entity.Partner;
+import in.codebasket.cbwa.common.dto.PartnerEvent;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
 import org.junit.jupiter.api.AfterAll;

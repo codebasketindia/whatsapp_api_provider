@@ -1,14 +1,16 @@
 package in.codebasket.cbwa.topup;
 
-import in.codebasket.cbwa.common.exception.AppException;
-import in.codebasket.cbwa.common.settings.SettingsService;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.service.topup.TopupService;
+
+import in.codebasket.cbwa.exception.AppException;
+import in.codebasket.cbwa.common.service.settings.SettingsService;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.wallet.WalletQueryService;
-import in.codebasket.cbwa.wallet.WalletRefType;
-import in.codebasket.cbwa.wallet.WalletRepository;
-import in.codebasket.cbwa.wallet.WalletService;
+import in.codebasket.cbwa.common.service.wallet.WalletQueryService;
+import in.codebasket.cbwa.common.constants.WalletRefType;
+import in.codebasket.cbwa.common.repository.WalletRepository;
+import in.codebasket.cbwa.common.service.wallet.WalletService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

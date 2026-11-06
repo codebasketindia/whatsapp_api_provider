@@ -1,9 +1,9 @@
 package in.codebasket.cbwa.auth;
 
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.user.User;
+import in.codebasket.cbwa.common.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 

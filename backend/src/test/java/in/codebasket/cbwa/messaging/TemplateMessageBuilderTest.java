@@ -1,17 +1,19 @@
 package in.codebasket.cbwa.messaging;
 
+import in.codebasket.cbwa.common.service.messaging.TemplateMessageBuilder;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import in.codebasket.cbwa.common.domain.MessageCategory;
-import in.codebasket.cbwa.common.exception.AppException;
-import in.codebasket.cbwa.common.util.JsonUtil;
-import in.codebasket.cbwa.messaging.dto.SendMessageRequest.ButtonVariable;
-import in.codebasket.cbwa.messaging.dto.SendMessageRequest.HeaderVariable;
-import in.codebasket.cbwa.messaging.dto.SendMessageRequest.TemplateRef;
-import in.codebasket.cbwa.messaging.dto.SendMessageRequest.TemplateVariables;
-import in.codebasket.cbwa.template.ComponentType;
-import in.codebasket.cbwa.template.ParameterFormat;
-import in.codebasket.cbwa.template.Template;
-import in.codebasket.cbwa.template.TemplateComponent;
+import in.codebasket.cbwa.common.constants.MessageCategory;
+import in.codebasket.cbwa.exception.AppException;
+import in.codebasket.cbwa.common.utils.JsonUtil;
+import in.codebasket.cbwa.common.dto.SendMessageRequest.ButtonVariable;
+import in.codebasket.cbwa.common.dto.SendMessageRequest.HeaderVariable;
+import in.codebasket.cbwa.common.dto.SendMessageRequest.TemplateRef;
+import in.codebasket.cbwa.common.dto.SendMessageRequest.TemplateVariables;
+import in.codebasket.cbwa.common.constants.ComponentType;
+import in.codebasket.cbwa.common.constants.ParameterFormat;
+import in.codebasket.cbwa.common.entity.Template;
+import in.codebasket.cbwa.common.entity.TemplateComponent;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

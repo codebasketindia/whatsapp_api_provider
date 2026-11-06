@@ -1,6 +1,6 @@
 package in.codebasket.cbwa.config;
 
-import in.codebasket.cbwa.auth.SecurityUtils;
+import in.codebasket.cbwa.security.SecurityUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.auditing.DateTimeProvider;

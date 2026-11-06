@@ -1,21 +1,23 @@
 package in.codebasket.cbwa.campaign;
 
-import in.codebasket.cbwa.common.domain.MessageCategory;
-import in.codebasket.cbwa.common.util.PhoneUtil;
-import in.codebasket.cbwa.common.util.Ulids;
-import in.codebasket.cbwa.messaging.ChargeStatus;
-import in.codebasket.cbwa.messaging.Message;
-import in.codebasket.cbwa.messaging.MessageDirection;
-import in.codebasket.cbwa.messaging.MessageRepository;
-import in.codebasket.cbwa.messaging.MessageStatus;
-import in.codebasket.cbwa.messaging.MessageType;
-import in.codebasket.cbwa.messaging.OutboundCommand;
-import in.codebasket.cbwa.pricing.PriceResolver;
-import in.codebasket.cbwa.sender.SenderAccessService;
-import in.codebasket.cbwa.template.Template;
-import in.codebasket.cbwa.template.TemplateRepository;
-import in.codebasket.cbwa.wallet.WalletRefType;
-import in.codebasket.cbwa.wallet.WalletService;
+import in.codebasket.cbwa.common.entity.Campaign;
+
+import in.codebasket.cbwa.common.constants.MessageCategory;
+import in.codebasket.cbwa.common.utils.PhoneUtil;
+import in.codebasket.cbwa.common.utils.Ulids;
+import in.codebasket.cbwa.common.constants.ChargeStatus;
+import in.codebasket.cbwa.common.entity.Message;
+import in.codebasket.cbwa.common.constants.MessageDirection;
+import in.codebasket.cbwa.common.repository.MessageRepository;
+import in.codebasket.cbwa.common.constants.MessageStatus;
+import in.codebasket.cbwa.common.constants.MessageType;
+import in.codebasket.cbwa.common.dto.OutboundCommand;
+import in.codebasket.cbwa.common.service.pricing.PriceResolver;
+import in.codebasket.cbwa.common.service.sender.SenderAccessService;
+import in.codebasket.cbwa.common.entity.Template;
+import in.codebasket.cbwa.common.repository.TemplateRepository;
+import in.codebasket.cbwa.common.constants.WalletRefType;
+import in.codebasket.cbwa.common.service.wallet.WalletService;
 
 import java.math.BigDecimal;
 

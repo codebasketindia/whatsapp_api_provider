@@ -1,13 +1,16 @@
 package in.codebasket.cbwa.sender;
 
+import in.codebasket.cbwa.common.entity.PhoneNumber;
+import in.codebasket.cbwa.common.repository.PhoneNumberRepository;
+
 import com.github.tomakehurst.wiremock.client.WireMock;
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
 import in.codebasket.cbwa.meta.MetaTestBase;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;

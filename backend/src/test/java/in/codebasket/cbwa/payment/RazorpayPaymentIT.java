@@ -1,13 +1,15 @@
 package in.codebasket.cbwa.payment;
 
+import in.codebasket.cbwa.common.service.payment.PaymentService;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import in.codebasket.cbwa.common.crypto.HashUtil;
-import in.codebasket.cbwa.common.settings.SettingsService;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.utils.HashUtil;
+import in.codebasket.cbwa.common.service.settings.SettingsService;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
-import in.codebasket.cbwa.wallet.WalletRepository;
+import in.codebasket.cbwa.common.repository.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

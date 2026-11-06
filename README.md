@@ -45,9 +45,9 @@ HTTPS on your domain, Meta App Review. Follow `docs/deployment-guide.md` §6–�
 
 ## Repository layout
 ```
-backend/   Spring Boot app (modules: auth, user, partner, wallet, topup, pricing, payment, invoice, meta, waba,
-           sender, convtools, template, messaging, webhook, contact, campaign, publicapi, partnerhook, report, job,
-           ai, scheduling, registration, travel)
+backend/   Spring Boot app, organised by role: common/ (entity, repository, constants, utils, dto, service/<domain>, job),
+           admin/, partner/, staff/, webhook/ (each controller/service/dto), config/, security/, exception/
+           — see docs/phase-0/05-structure-conventions.md §2
 frontend/  React SPA (admin + partner panels)
 deploy/    systemd, nginx, mysql, scripts (server-setup, deploy, backup, restore, healthcheck), loadtest, e2e
 docs/      phase docs, guides, QA

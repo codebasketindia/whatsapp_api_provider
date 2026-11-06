@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <conversionRule conversionWord="mask" converterClass="in.codebasket.cbwa.common.logging.MaskingConverter"/>
+    <conversionRule conversionWord="mask" converterClass="in.codebasket.cbwa.config.MaskingConverter"/>
     <springProperty scope="context" name="LOG_PATH" source="cbwa.log-path" defaultValue="${CBWA_LOG_PATH:-./logs}"/>
 
     <springProfile name="!prod">

@@ -1,6 +1,8 @@
 package in.codebasket.cbwa.partnerhook;
 
-import in.codebasket.cbwa.common.exception.AppException;
+import in.codebasket.cbwa.partner.service.webhook.WebhookUrlValidator;
+
+import in.codebasket.cbwa.exception.AppException;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetAddress;

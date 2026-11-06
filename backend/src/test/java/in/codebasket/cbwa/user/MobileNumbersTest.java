@@ -1,6 +1,8 @@
 package in.codebasket.cbwa.user;
 
-import in.codebasket.cbwa.common.exception.AppException;
+import in.codebasket.cbwa.common.utils.MobileNumbers;
+
+import in.codebasket.cbwa.exception.AppException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,7 +1,7 @@
 package in.codebasket.cbwa.publicapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
 import in.codebasket.cbwa.support.TestData;
 import org.junit.jupiter.api.Test;

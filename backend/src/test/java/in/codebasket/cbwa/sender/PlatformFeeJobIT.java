@@ -1,12 +1,16 @@
 package in.codebasket.cbwa.sender;
 
-import in.codebasket.cbwa.common.domain.BillingMode;
-import in.codebasket.cbwa.common.domain.SenderType;
-import in.codebasket.cbwa.partner.Partner;
+import in.codebasket.cbwa.common.entity.PhoneNumber;
+import in.codebasket.cbwa.common.job.PlatformFeeJob;
+import in.codebasket.cbwa.common.repository.PhoneNumberRepository;
+
+import in.codebasket.cbwa.common.constants.BillingMode;
+import in.codebasket.cbwa.common.constants.SenderType;
+import in.codebasket.cbwa.common.entity.Partner;
 import in.codebasket.cbwa.support.AbstractIntegrationTest;
-import in.codebasket.cbwa.waba.WabaOwnerType;
-import in.codebasket.cbwa.waba.WhatsappAccount;
-import in.codebasket.cbwa.wallet.WalletRepository;
+import in.codebasket.cbwa.common.constants.WabaOwnerType;
+import in.codebasket.cbwa.common.entity.WhatsappAccount;
+import in.codebasket.cbwa.common.repository.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

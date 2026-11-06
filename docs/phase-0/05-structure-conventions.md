@@ -14,42 +14,80 @@ whatsapp_api_provider/
 └── README.md
 ```
 
-## 2. Backend structure
+## 2. Backend structure (role-based, v1.6)
 ```
 backend/
 ├── pom.xml
 └── src/
-    ├── main/java/in/codebasket/cbwa/
-    │   ├── CbwaApplication.java
-    │   ├── config/                    SecurityConfig, WebClientConfig, AsyncConfig, SchedulingConfig,
-    │   │                              OpenApiConfig, JacksonConfig, CorsProperties, AppProperties
-    │   ├── common/
-    │   │   ├── api/                   ApiResponse, PageResponse, ErrorCode, FieldErrorDto
-    │   │   ├── exception/             AppException, NotFoundException, BusinessException, GlobalExceptionHandler
-    │   │   ├── entity/                BaseEntity, AuditableEntity (JPA auditing)
-    │   │   ├── crypto/                CryptoService (AES-GCM), HmacUtil, TokenGenerator
-    │   │   ├── storage/               FileStorageService, StoredFile*, FileTypeValidator
-    │   │   ├── sequence/              NumberSequenceService
-    │   │   ├── util/                  TimeUtil (UTC/IST), PhoneUtil (libphonenumber), MoneyUtil, Ulid
-    │   │   └── web/                   RequestIdFilter, ClientIpResolver
-    │   ├── auth/      {controller, service, dto, security(JwtService, JwtAuthFilter, CurrentUser), entity, repository}
-    │   ├── user/      {controller, service, dto, mapper, entity, repository}
-    │   ├── partner/   …same sub-packages…
-    │   ├── wallet/  topup/  pricing/  payment/{gateway/razorpay}  invoice/
-    │   ├── meta/      {client(MetaGraphClient), dto, error(MetaErrorMapper), settings}
-    │   ├── waba/  sender/  convtools/  template/  messaging/{queue, worker, charging, window}
-    │   ├── webhook/  contact/  campaign/  publicapi/{filter, ratelimit}  partnerhook/
-    │   ├── report/  settings/  audit/  notification/{email}
-    │   └── job/                       (thin @Scheduled wrappers calling services)
-    ├── main/resources/
-    │   ├── application.yml  application-dev.yml  application-prod.yml
-    │   ├── db/migration/              V1__init_schema.sql, V2__seed.sql, V3__… (one per phase)
-    │   ├── templates/email/           *.html (Thymeleaf-free simple placeholders)
-    │   ├── templates/pdf/             invoice layout constants
-    │   └── logback-spring.xml
-    └── test/java/in/codebasket/cbwa/  unit (Mockito) + integration (Testcontainers MySQL)
+    ├── main/
+    │   ├── java/in/codebasket/cbwa/
+    │   │   ├── CbwaApplication.java
+    │   │   │
+    │   │   ├── common/                     shared by every role
+    │   │   │   ├── entity/                 all JPA entities (60) + BaseEntity, AuditableEntity
+    │   │   │   ├── repository/             all Spring Data repositories (69)
+    │   │   │   ├── constants/              enums and fixed keys (statuses, types, SettingKeys)
+    │   │   │   ├── utils/                  static helpers: PhoneUtil, MoneyUtil, TimeUtil, JsonUtil, Ulids, HashUtil, Paging…
+    │   │   │   ├── dto/                    API envelope (ApiResponse, PageResponse, FieldErrorDto) + DTOs/events used by several roles
+    │   │   │   ├── service/<domain>/       business logic used by more than one role, one folder per domain:
+    │   │   │   │                           ai, audit, campaign, contact, convtools, crypto, invoice, mail, messaging, meta,
+    │   │   │   │                           notification, payment, pricing, registration, report, scheduling, sender,
+    │   │   │   │                           sequence, settings, storage, template, topup, travel, waba, wallet
+    │   │   │   ├── job/                    @Scheduled background jobs (queue worker, campaign dispatcher, reconciliation…)
+    │   │   │   └── controller/             endpoints for every logged-in user (FileController: /api/files)
+    │   │   │
+    │   │   ├── admin/                      platform admin panel (/api/admin/**)
+    │   │   │   ├── controller/             Admin*Controller, RatePlan, MetaSettings, Waba, Settings, Audit
+    │   │   │   ├── service/                admin-only logic (partners, rate plans, WABAs, Meta settings)
+    │   │   │   └── dto/
+    │   │   │
+    │   │   ├── partner/                    partner dashboard + partner API (/api/partner/**, /api/v1/**, public pages)
+    │   │   │   ├── controller/             messaging, inbox, campaigns, contacts, templates, AI, registrations, travel…
+    │   │   │   │   └── webhook/            partner's own outgoing webhooks + developer portal
+    │   │   │   ├── service/                partner-only logic (AI replies, inbox, public API, API keys)
+    │   │   │   │   └── webhook/            delivery of partner webhooks (dispatcher, sender, URL validator)
+    │   │   │   └── dto/
+    │   │   │
+    │   │   ├── staff/                      staff users, roles and permissions (/api/admin/staff, /roles)
+    │   │   │   ├── controller/
+    │   │   │   ├── service/
+    │   │   │   └── dto/
+    │   │   │
+    │   │   ├── webhook/                    incoming webhooks (/api/webhooks/**): Meta WhatsApp, Razorpay, partner Razorpay
+    │   │   │   ├── controller/
+    │   │   │   ├── service/                inbound messages, statuses, charging on delivery, account events
+    │   │   │   └── dto/
+    │   │   │
+    │   │   ├── config/                     Spring configuration, AppProperties, filters, logging, seeder
+    │   │   ├── security/                   SecurityConfig, JWT, API-key auth, login/OTP, /api/auth + /api/me
+    │   │   └── exception/                  AppException, ErrorCode, GlobalExceptionHandler, Meta/secret exceptions
+    │   │
+    │   └── resources/
+    │       ├── application.properties          shared settings (secrets only from environment variables)
+    │       ├── application-local.properties    default profile for developers
+    │       ├── application-prod.properties     server profile (env file /etc/cbwa/cbwa.env)
+    │       ├── db/migration/                   Flyway V1__…, V2__… (never edit an applied migration)
+    │       ├── templates/  fonts/  pass-designs/  logback-spring.xml
+    └── test/
+        ├── java/in/codebasket/cbwa/        integration tests by feature (real MySQL 8) + unit tests
+        └── resources/application-test.properties
 ```
-Each module: `controller/ service/ dto/ mapper/ entity/ repository/` (only what it needs).
+
+### Where does a new class go?
+| It is… | Put it in |
+|---|---|
+| a JPA `@Entity` | `common/entity` |
+| a Spring Data repository | `common/repository` |
+| an enum / fixed key | `common/constants` |
+| a static helper with no Spring bean | `common/utils` |
+| a controller | by URL: `/api/admin/**` → `admin/controller`, `/api/partner/**`, `/api/v1/**`, partner public pages → `partner/controller`, `/api/webhooks/**` → `webhook/controller`, staff & roles → `staff/controller`, `/api/auth`, `/api/me` → `security` |
+| a service used by one role only | that role's `service/` |
+| a service used by several roles | `common/service/<domain>/` |
+| a scheduled job | `common/job` |
+| a request/response record | that role's `dto/` (several roles → `common/dto`) |
+
+A controller serves **one** role: an admin endpoint for a partner feature gets its own `Admin…Controller` (e.g.
+`AdminTemplateController` + `TemplateController`). Classes used across packages are `public`.
 
 ## 3. Frontend structure
 ```
@@ -76,7 +114,7 @@ frontend/
 ## 4. Naming conventions
 | Item | Convention | Example |
 |---|---|---|
-| Java packages | lowercase | `in.codebasket.cbwa.wallet` |
+| Java packages | lowercase, by role then layer | `in.codebasket.cbwa.partner.controller`, `in.codebasket.cbwa.common.service.wallet` |
 | Classes | PascalCase + role suffix | `WalletService`, `WalletController`, `WalletTransactionRepository`, `WalletTxnDto`, `WalletMapper` |
 | Request/response DTOs | `XxxRequest`, `XxxResponse` / `XxxDto` | `CreatePartnerRequest` |
 | Enums | PascalCase type, UPPER_SNAKE values | `ChargeStatus.HELD` |

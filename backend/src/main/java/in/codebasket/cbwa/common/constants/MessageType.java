@@ -1,0 +1,5 @@
+package in.codebasket.cbwa.common.constants;
+
+public enum MessageType {
+    TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, STICKER, LOCATION, CONTACTS, REACTION, INTERACTIVE, TEMPLATE, UNSUPPORTED, SYSTEM, BUTTON, ORDER
+}

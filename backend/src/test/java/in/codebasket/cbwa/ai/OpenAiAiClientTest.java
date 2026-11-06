@@ -1,5 +1,9 @@
 package in.codebasket.cbwa.ai;
 
+import in.codebasket.cbwa.common.service.ai.AiModelClient;
+
+import in.codebasket.cbwa.partner.service.OpenAiAiClient;
+
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.junit.jupiter.api.AfterAll;
