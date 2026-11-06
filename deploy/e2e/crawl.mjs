@@ -11,7 +11,7 @@ const routes = {
     '/reports?tab=categories', '/reports?tab=countries', '/reports?tab=revenue', '/reports?tab=reconciliation',
     '/settings', '/settings?tab=payment', '/settings?tab=gst', '/settings?tab=smtp', '/settings?tab=charging', '/settings?tab=wallet', '/settings?tab=limits', '/settings?tab=security', '/settings?tab=retention',
     '/staff', '/staff/roles', '/audit-logs', '/notifications', '/profile'],
-  partner: ['', '/wallet', '/wallet?tab=requests', '/wallet?tab=payments', '/wallet?tab=invoices', '/wallet/add', '/senders', '/senders/1', '/senders/1?tab=profile',
+  partner: ['', '/ai', '/ai?tab=knowledge', '/ai?tab=test', '/ai?tab=usage', '/scheduled', '/registrations', '/registrations/new', '/registrations/1', '/registrations/1/edit', '/travel', '/travel?tab=bookings', '/wallet', '/wallet?tab=requests', '/wallet?tab=payments', '/wallet?tab=invoices', '/wallet/add', '/senders', '/senders/1', '/senders/1?tab=profile',
     '/senders/1?tab=health', '/senders/1?tab=qr', '/senders/1?tab=welcome', '/senders/1?tab=blocked', '/send', '/campaigns', '/campaigns/new',
     '/contacts', '/contacts/import', '/contacts/groups', '/contacts/opt-outs', '/templates', '/templates/new', '/templates/library', '/templates/1',
     '/inbox', '/inbox/1/919812345678', '/reports', '/reports?tab=usage', '/developer', '/developer?tab=webhook', '/developer?tab=logs', '/developer?tab=docs',
