@@ -555,6 +555,27 @@ amount, paymentId, paymentMethod, paidAt`; PassStatus adds `AWAITING_PAYMENT`.
 | PR4 | POST | /public/register/{slug}/verify-payment | PUB (rate-limited) | `{registrationUid, razorpayOrderId, razorpayPaymentId, razorpaySignature}` | RegisterResult (`passNo`, `passUrl` now set) | PAYMENT_SIGNATURE_INVALID |
 | PH1 | POST | /webhooks/razorpay/partners/{partnerUid} | PUB (signature) | Razorpay event (`payment.captured`, `order.paid`, `payment.failed`), header `X-Razorpay-Signature` = HMAC(raw body, partner webhook secret) | `{result}` | 400 WEBHOOK_SIGNATURE_INVALID |
 
+### 4.24 Booking packages, QR passes, invoice (v1.7)
+A registration link may have **packages** (`registration_packages`: code, name, description, details, icon, image, MRP,
+sale price, mandatory, active, order, pass title, own pass design). PR1 returns `packages[]`, `hasTerms`, `hasPrivacy`.
+PR2 takes `packageIds` (comma list of optional packages; mandatory ones are always added); the amount is computed on the
+server only. After a verified payment (PR4, webhook PH1 or the reconcile job) every chosen package gets a pass id
+(`{bookingNo}-{CODE}`) and a pass image with a **signed QR** (`{frontendUrl}/v/{itemId}.{HMAC}`; HMAC-SHA256 keyed from the
+server encryption key), the booking gets `invoiceNo = INV-{bookingNo}` (no GST). RegisterResult / RegistrationDto add
+`booking {bookingNo, invoiceNo, mrpTotal, total, items[{id, name, passNo, mrp, price, passUrl, redeemedAt}], invoiceUrl, passesPdfUrl}`.
+RF2/RF4 accept `packages[]` (id null = new; omitted = deleted, or hidden when already booked) and `termsText`, `privacyText`.
+
+| # | Method | URL | Role | Response |
+|---|---|---|---|---|
+| PR5 | GET | /public/register/{slug}/legal/{terms\|privacy} | PUB | `{formTitle, businessName, title, text}` |
+| PB1 | GET | /public/bookings/{uid}/passes/{itemId}.jpg | PUB (unguessable booking id, paid only) | image/jpeg |
+| PB2 | GET | /public/bookings/{uid}/invoice.pdf | PUB (paid only) | PDF |
+| PB3 | GET | /public/bookings/{uid}/passes.pdf | PUB (paid only) | PDF, one pass per page |
+| PB4 | GET | /public/package-images/{fileUid} | PUB (only images used by a package) | image |
+| PV1 | GET | /public/passes/check?token= | PUB (rate-limited) | `{status: VALID\|ALREADY_REDEEMED\|NOT_PAID\|INVALID, message, passNo, packageName, name (masked), formTitle, redeemedAt}` |
+| PV2 | POST | /partner/passes/verify `{token}` | PTR (own passes only) | same, full name + mobile |
+| PV3 | POST | /partner/passes/redeem `{token}` | PTR | VALID the first time (marks used, atomic), then ALREADY_REDEEMED |
+
 ### 4.18 System
 | GET | /actuator/health | PUB | `{status:"UP"}` (details only on localhost) |
 | GET | /swagger-ui.html, /v3/api-docs | PUB in dev; prod: admin-only via Nginx basic auth or disabled by `CBWA_SWAGGER_ENABLED` |
@@ -607,3 +628,6 @@ amount, paymentId, paymentMethod, paidAt`; PassStatus adds `AWAITING_PAYMENT`.
   source `REGISTRATION`, contact source `REGISTRATION`.
 - v1.5 — Paid registrations (§4.23: PA1–PA3, RG4, PR4, PH1): partner's own Razorpay account, `feeAmount` on links, pass
   created and sent on WhatsApp only after a verified payment. RF8 CSV adds payment status, amount and Razorpay payment id.
+- v1.7 — Booking packages with MRP / sale price, mandatory registration fee, multiple selection, server-side totals,
+  one signed-QR pass per paid package, invoice PDF (no GST), all-passes PDF, terms/privacy pages, pass check /
+  one-time redemption (§4.24: PR5, PB1–PB4, PV1–PV3). Migration V8 seeds the packages of `madinah-ziyarat-2024`.

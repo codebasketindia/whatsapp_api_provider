@@ -79,6 +79,9 @@ const RegistrationFormPage = lazy(() => import('./features/partner/registrations
 const RegistrationDetailPage = lazy(() => import('./features/partner/registrations/pages/RegistrationDetailPage'));
 const TravelPage = lazy(() => import('./features/partner/travel/pages/TravelPage'));
 const RegisterPage = lazy(() => import('./features/public/register/RegisterPage'));
+const LegalPage = lazy(() => import('./features/public/register/LegalPage'));
+const VerifyPassPage = lazy(() => import('./features/public/register/VerifyPassPage'));
+const PassScannerPage = lazy(() => import('./features/partner/passes/pages/PassScannerPage'));
 
 /** Wraps an admin page with its permission check (403 when missing). */
 const perm = (permission, element) => (
@@ -93,6 +96,8 @@ export const routes = [
   { path: '/login/verify', element: <VerifyOtpPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/r/:slug', element: <RegisterPage /> },
+  { path: '/r/:slug/:kind', element: <LegalPage /> },
+  { path: '/v/:token', element: <VerifyPassPage /> },
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/404', element: <NotFoundPage /> },
   { path: '/500', element: <ServerErrorPage /> },
@@ -193,6 +198,7 @@ export const routes = [
           { path: 'registrations/:id', element: <RegistrationDetailPage /> },
           { path: 'registrations/:id/edit', element: <RegistrationFormPage /> },
           { path: 'travel', element: <TravelPage /> },
+          { path: 'passes/verify', element: <PassScannerPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

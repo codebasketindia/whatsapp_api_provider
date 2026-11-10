@@ -99,4 +99,27 @@ public class RegistrationForm extends AuditableEntity {
     private java.math.BigDecimal feeAmount;
 
     private String feeLabel;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String termsText;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String privacyText;
+
+    // booking page look
+    private String heroImageUrl;
+    private String pageHeading;
+    private String pageNote;
+    private String ctaLabel;
+
+    // combo offer: all packages in comboCodes together cost comboPrice (until comboValidUntil)
+    private String comboTitle;
+    private String comboSubtitle;
+    private String comboCodes;
+    private java.math.BigDecimal comboMrp;
+    private java.math.BigDecimal comboPrice;
+    private Instant comboValidUntil;
+
+    /** Seller name on invoices; null = partner's business name. */
+    private String invoiceName;
 }

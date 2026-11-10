@@ -13,12 +13,15 @@ import { istLocalToIso } from '../../campaigns/components/schedule';
 import { isoToIstLocal } from '../../scheduled/components/scheduleTime';
 import PassDesignCard from '../components/PassDesignCard';
 import FollowUpsCard from '../components/FollowUpsCard';
+import PageSettingsCard from '../components/PageSettingsCard';
+import PackagesCard, { formToPackage, packageToForm } from '../components/PackagesCard';
 import { HARMAIN_LAYOUT, slugify } from '../components/regHelpers';
 
 const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
-  feeAmount: '', feeLabel: '',
+  feeAmount: '', feeLabel: '', packages: [], termsText: '', privacyText: '',
+  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -35,6 +38,13 @@ const fromDto = (f) => ({
   passCaption: f.passCaption || '',
   feeAmount: f.feeAmount ?? '',
   feeLabel: f.feeLabel || '',
+  packages: (f.packages || []).map(packageToForm),
+  termsText: f.termsText || '',
+  privacyText: f.privacyText || '',
+  heroImageUrl: f.heroImageUrl || '', pageHeading: f.pageHeading || '', pageNote: f.pageNote || '', ctaLabel: f.ctaLabel || '',
+  comboTitle: f.comboTitle || '', comboSubtitle: f.comboSubtitle || '', comboCodes: f.comboCodes || '',
+  comboMrp: f.comboMrp ?? '', comboPrice: f.comboPrice ?? '', comboValidUntil: f.comboValidUntil ? isoToIstLocal(f.comboValidUntil) : '',
+  invoiceName: f.invoiceName || '',
 });
 
 function toBody(v) {
@@ -62,6 +72,14 @@ function toBody(v) {
     followUps: v.followUps,
     feeAmount: v.feeAmount === '' ? null : Number(v.feeAmount),
     feeLabel: v.feeLabel?.trim() || null,
+    packages: v.packages.map(formToPackage),
+    termsText: v.termsText ?? '',
+    privacyText: v.privacyText ?? '',
+    heroImageUrl: v.heroImageUrl?.trim() || null, pageHeading: v.pageHeading?.trim() || null, pageNote: v.pageNote?.trim() || null,
+    ctaLabel: v.ctaLabel?.trim() || null, comboTitle: v.comboTitle?.trim() || null, comboSubtitle: v.comboSubtitle?.trim() || null,
+    comboCodes: v.comboCodes?.trim() || null, comboMrp: v.comboMrp === '' ? null : Number(v.comboMrp),
+    comboPrice: v.comboPrice === '' ? null : Number(v.comboPrice), comboValidUntil: v.comboValidUntil ? istLocalToIso(v.comboValidUntil) : null,
+    invoiceName: v.invoiceName?.trim() || null,
   };
 }
 
@@ -120,7 +138,10 @@ function Editor({ initial, id }) {
                   description="The photo is printed in the photo box of the pass." />
         </div>
       </Card>
-      <Card title="Registration fee" subtitle="Leave empty for a free registration. With a fee, the pass is created and sent only after payment.">
+      <PageSettingsCard v={v} set={set} errors={errors} />
+      <PackagesCard value={v.packages} onChange={(packages) => set({ packages })} termsText={v.termsText} privacyText={v.privacyText}
+                    onLegal={set} errors={errors} />
+      <Card title="Registration fee" subtitle={v.packages.length ? 'Not used: this link charges by its packages above.' : 'Leave empty for a free registration. With a fee, the pass is created and sent only after payment.'}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input type="number" min={1} step="0.01" label="Fee (₹)" value={v.feeAmount} error={errors.feeAmount}
                  placeholder="Free" onChange={(e) => set({ feeAmount: e.target.value })}

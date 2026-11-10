@@ -35,3 +35,9 @@ export const checkPayment = (uid) => api.post(`/partner/registrations/${uid}/che
 
 // PR4: confirm the Razorpay checkout result (public)
 export const verifyPayment = (slug, body) => api.post(`/public/register/${encodeURIComponent(slug)}/verify-payment`, body).then(unwrap);
+
+// v1.7 bookings: terms/privacy pages and QR pass checks
+export const getLegal = (slug, kind) => api.get(`/public/register/${encodeURIComponent(slug)}/legal/${kind}`).then(unwrap);
+export const checkPass = (token) => api.get('/public/passes/check', { params: { token } }).then(unwrap);
+export const verifyPass = (token) => api.post('/partner/passes/verify', { token }).then(unwrap);
+export const redeemPass = (token) => api.post('/partner/passes/redeem', { token }).then(unwrap);

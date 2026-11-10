@@ -95,6 +95,12 @@ UPI/card/net banking on the link page; the money goes to your Razorpay account. 
 and the WhatsApp pass are created **only after the payment is confirmed**. Unpaid people show *Not paid yet*; use
 **Check payment** if someone says they paid.
 
+**Booking packages (passes for sale)**: in the link editor, **Booking packages → Add package**: name, code (e.g. SMM),
+icon, MRP and sale price (shown as ~~₹5,000~~ ₹3,000), short description, full details, optional card image. Mark the
+registration fee **Mandatory** (always included). Write **Terms & Conditions** and **Privacy Policy** (each opens on its
+own page). Customers pick packages, pay once, and download one QR pass per package plus an invoice (no GST).
+At the entry open **Verify passes**, scan the QR (or paste the link) and tap **Allow entry** — a pass works only once.
+
 ## 11. Travel packages & bookings (for the AI)
 **Travel packages**: add each tour with code, price, dates, total seats, inclusions, day-wise plan and a brochure.
 **Bookings**: add customer bookings (number, travellers, amount paid, status). Seats left update automatically and
