@@ -8,8 +8,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -32,7 +30,7 @@ public class TemplateAnalytics extends BaseEntity {
     @Column(nullable = false)
     private int readCount;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String clicked;
 
     @Column(nullable = false)

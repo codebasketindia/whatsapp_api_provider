@@ -7,6 +7,9 @@ import ThemeToggle from '../../../components/layout/ThemeToggle';
 export default function AuthShell({ title, subtitle, children, footer }) {
   usePageTitle(title);
   const { data: brand } = useQuery({ queryKey: ['public', 'branding'], queryFn: getBranding, staleTime: Infinity, retry: false });
+  const logoSrc = brand?.logoUrl
+    ? `${import.meta.env.VITE_API_BASE_URL || '/api'}${brand.logoUrl.replace(/^\/api/, '')}`
+    : '/favicon.svg';
   return (
     <div className="flex min-h-[100dvh] flex-col bg-canvas">
       <div className="flex justify-end p-2">
@@ -15,7 +18,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
       <div className="flex flex-1 items-start justify-center px-4 pb-10 sm:items-center">
         <div className="w-full max-w-md">
           <div className="mb-6 flex flex-col items-center text-center">
-            <img src={brand?.logoUrl || '/favicon.svg'} alt="" className="mb-3 h-14 w-14 rounded-xl object-contain" />
+            <img src={logoSrc} alt="" className="mb-3 h-14 w-14 rounded-xl object-contain" />
             <p className="text-sm font-medium text-muted">{brand?.companyName || 'CB WhatsApp Gateway'}</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}

@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CheckCircle2, Download, MessageCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Download, MessageCircle } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { getErrorMessage, getFieldErrors } from '../../../api/axios';
 import { Alert, Button, Checkbox, FileUpload, Input, PhoneInput, Spinner, isIndianMobile } from '../../../components/ui';
@@ -18,11 +18,99 @@ const schema = z.object({
   consent: z.literal(true, { errorMap: () => ({ message: 'Please agree to get your pass on WhatsApp' }) }),
 });
 
+const formLightStyles = `
+  .register-form-light input,
+  .register-form-light select,
+  .register-form-light .field-base {
+    background-color: #f8f6f0 !important;
+    color: #1f2937 !important;
+    border-color: #c5b88a !important;
+  }
+  .register-form-light input::placeholder {
+    color: #9ca3af !important;
+  }
+  .register-form-light label {
+    color: #0b5a2e !important;
+    font-weight: 500 !important;
+  }
+  .register-form-light .bg-surface-2 {
+    background-color: #e8e4d9 !important;
+    color: #1f2937 !important;
+  }
+  .register-form-light .text-ink {
+    color: #374151 !important;
+  }
+  .register-form-light .text-muted {
+    color: #6b7280 !important;
+  }
+  .register-form-light .border-line {
+    border-color: #c5b88a !important;
+  }
+  .register-form-light input[type="checkbox"] {
+    background-color: white !important;
+    border-color: #c5b88a !important;
+  }
+`;
+
 function Shell({ children }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0b5a2e] via-[#0e6b37] to-[#0b5a2e] px-4 py-6 sm:py-10">
-      <div className="mx-auto w-full max-w-md overflow-hidden rounded-3xl border-4 border-[#d4af37] bg-[#fffdf5] shadow-2xl">{children}</div>
-      <p className="mt-4 text-center text-xs text-white/70">Secured by CB WhatsApp Gateway</p>
+    <>
+      <style>{formLightStyles}</style>
+      <div className="min-h-screen bg-gradient-to-b from-[#0b5a2e] via-[#0e6b37] to-[#0b5a2e] px-4 py-6 sm:py-10">
+        <div className="mx-auto w-full max-w-md overflow-hidden rounded-3xl border-4 border-[#d4af37] bg-[#fffdf5] shadow-2xl">{children}</div>
+        <p className="mt-4 text-center text-xs text-white/70">Secured by CB WhatsApp Gateway</p>
+      </div>
+    </>
+  );
+}
+
+/** Extract first paragraph as summary and rest as details */
+function parseDescription(desc) {
+  if (!desc) return { summary: '', details: '' };
+  const lines = desc.split('\n').filter((l) => l.trim());
+  // Find first empty line or after first paragraph
+  const parts = desc.split(/\n\n+/);
+  if (parts.length > 1) {
+    return { summary: parts[0].trim(), details: parts.slice(1).join('\n\n').trim() };
+  }
+  // If no clear separation, show first 2 lines as summary
+  if (lines.length > 3) {
+    return { summary: lines.slice(0, 2).join('\n'), details: lines.slice(2).join('\n') };
+  }
+  return { summary: desc, details: '' };
+}
+
+function CollapsibleDescription({ description }) {
+  const [expanded, setExpanded] = useState(false);
+  const { summary, details } = parseDescription(description);
+
+  if (!details) {
+    return <p className="mt-3 whitespace-pre-line text-left text-sm text-white/90">{description}</p>;
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="whitespace-pre-line text-sm text-white/90">{summary}</p>
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
+      >
+        <div className="mx-auto mt-3 max-w-xs text-left text-sm text-white/90">
+          {details.split('\n').filter((l) => l.trim()).map((line, i) => (
+            <p key={i} className="py-0.5">{line}</p>
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-[#f3d77a] backdrop-blur transition-colors hover:bg-white/25"
+      >
+        {expanded ? (
+          <>Hide details <ChevronUp className="h-3.5 w-3.5" /></>
+        ) : (
+          <>View full details <ChevronDown className="h-3.5 w-3.5" /></>
+        )}
+      </button>
     </div>
   );
 }
@@ -135,9 +223,9 @@ export default function RegisterPage() {
       <div className="bg-[#0b5a2e] px-5 py-6 text-center text-white">
         {f.businessName && <p className="text-xs uppercase tracking-widest text-[#f3d77a]">{f.businessName}</p>}
         <h1 className="mt-1 text-2xl font-extrabold leading-tight">{f.title}</h1>
-        {f.description && <p className="mt-2 whitespace-pre-line text-sm text-white/85">{f.description}</p>}
+        {f.description && <CollapsibleDescription description={f.description} />}
       </div>
-      <div className="p-5 sm:p-6">
+      <div className="register-form-light p-5 sm:p-6">
         {!f.open ? (
           <Alert variant="warning" title={f.closedReason || 'Registrations are closed'} />
         ) : (

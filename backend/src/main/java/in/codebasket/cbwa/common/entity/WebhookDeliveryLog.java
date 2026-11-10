@@ -11,8 +11,6 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -32,8 +30,7 @@ public class WebhookDeliveryLog extends BaseEntity {
     @Column(nullable = false)
     private String eventType;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String payload;
 
     @Column(nullable = false)

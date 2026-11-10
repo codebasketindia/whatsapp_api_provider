@@ -16,8 +16,6 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -83,13 +81,13 @@ public class WhatsappAccount extends AuditableEntity {
     @Column(nullable = false)
     private WabaStatus status;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String restrictionInfo;
 
     private Instant connectedAt;
 
     private Instant disconnectedAt;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String raw;
 }

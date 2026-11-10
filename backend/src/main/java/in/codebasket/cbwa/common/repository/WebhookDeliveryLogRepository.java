@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -23,9 +24,9 @@ public interface WebhookDeliveryLogRepository extends JpaRepository<WebhookDeliv
     @Query(value = """
             select id from webhook_delivery_logs
              where status in ('PENDING','FAILED') and next_retry_at <= :now
-             order by id limit :limit for update skip locked
+             order by id for update skip locked
             """, nativeQuery = true)
-    List<Long> lockDueIds(@Param("now") Instant now, @Param("limit") int limit);
+    List<Long> lockDueIds(@Param("now") Instant now, Pageable pageable);
 
     @Modifying
     @Query("update WebhookDeliveryLog l set l.nextRetryAt = :lease where l.id in :ids")

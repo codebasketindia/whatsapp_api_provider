@@ -1,15 +1,16 @@
 package in.codebasket.cbwa.common.entity;
 
+import in.codebasket.cbwa.config.StringListConverter;
+
 import in.codebasket.cbwa.common.entity.AuditableEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -26,8 +27,8 @@ public class PartnerWebhook extends AuditableEntity {
     @Column(nullable = false)
     private String secretEnc;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false)
+    @Convert(converter = StringListConverter.class)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private List<String> events;
 
     @Column(name = "is_active", nullable = false)

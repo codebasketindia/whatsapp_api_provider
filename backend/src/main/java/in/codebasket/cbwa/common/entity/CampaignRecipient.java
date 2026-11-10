@@ -9,13 +9,14 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Table;
+import in.codebasket.cbwa.config.StringMapConverter;
+
 import java.time.Instant;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -38,7 +39,8 @@ public class CampaignRecipient {
     @Column(nullable = false)
     private String phone;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = StringMapConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private Map<String, String> variables;
 
     @Enumerated(EnumType.STRING)

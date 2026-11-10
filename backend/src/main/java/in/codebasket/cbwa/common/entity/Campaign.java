@@ -13,8 +13,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -41,15 +39,15 @@ public class Campaign extends AuditableEntity {
     @Column(nullable = false)
     private AudienceType audienceType;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String audience;
 
     private Long sourceFileId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String columnMapping;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String headerMedia;
 
     @Column(nullable = false)

@@ -3,17 +3,19 @@ package in.codebasket.cbwa.common.entity;
 import in.codebasket.cbwa.common.constants.FormStatus;
 import in.codebasket.cbwa.common.dto.FollowUp;
 import in.codebasket.cbwa.common.dto.PassLayout;
+import in.codebasket.cbwa.config.FollowUpListConverter;
+import in.codebasket.cbwa.config.PassLayoutConverter;
+import in.codebasket.cbwa.config.StringListConverter;
 
 import in.codebasket.cbwa.common.entity.AuditableEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -65,7 +67,8 @@ public class RegistrationForm extends AuditableEntity {
 
     private Long passDesignFileId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = PassLayoutConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private PassLayout passLayout;
 
     @Column(nullable = false)
@@ -73,17 +76,20 @@ public class RegistrationForm extends AuditableEntity {
 
     private Long passTemplateId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private List<String> passTemplateBody = new ArrayList<>();
 
     private String passCaption;
 
     private Long contactGroupId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private List<String> contactTags = new ArrayList<>();
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = FollowUpListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private List<FollowUp> followUps = new ArrayList<>();
 
     @Column(nullable = false)

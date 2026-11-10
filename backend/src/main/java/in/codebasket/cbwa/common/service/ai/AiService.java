@@ -371,6 +371,11 @@ public class AiService {
             return key == null || key.isBlank() ? null
                     : new Platform(provider, key, settings.getString(SettingKeys.AI, "model", "claude-haiku-5-5"), null);
         }
+        if ("GEMINI".equals(provider)) {
+            String key = settings.getString(SettingKeys.AI, "gemini_api_key");
+            return key == null || key.isBlank() ? null
+                    : new Platform(provider, key, settings.getString(SettingKeys.AI, "gemini_model", "gemini-1.5-flash"), null);
+        }
         String key = settings.getString(SettingKeys.AI, "openai_api_key");
         return key == null || key.isBlank() ? null : new Platform("OPENAI", key,
                 settings.getString(SettingKeys.AI, "openai_model", "gpt-5-mini"),

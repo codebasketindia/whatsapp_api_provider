@@ -2,8 +2,11 @@ package in.codebasket.cbwa.common.entity;
 
 import in.codebasket.cbwa.common.constants.AiLanguage;
 import in.codebasket.cbwa.common.constants.AiTone;
+import in.codebasket.cbwa.config.LongListConverter;
+import in.codebasket.cbwa.config.StringListConverter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
@@ -13,8 +16,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -41,7 +42,8 @@ public class AiAssistant {
     private boolean enabled;
 
     /** Null = every sender of the partner. */
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = LongListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private List<Long> senderIds;
 
     private String businessName;
@@ -59,7 +61,8 @@ public class AiAssistant {
 
     private String fallbackMessage;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
     private List<String> handoverKeywords = new ArrayList<>();
 
     @Column(nullable = false)

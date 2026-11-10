@@ -12,8 +12,6 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -53,7 +51,7 @@ public class PhoneNumber extends AuditableEntity {
 
     private String metaStatus;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String healthStatus;
 
     @Enumerated(EnumType.STRING)
@@ -83,6 +81,6 @@ public class PhoneNumber extends AuditableEntity {
 
     private Instant lastSyncedAt;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String raw;
 }

@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 
 /**
  * Turns PartnerEvents into delivery rows (after the publishing transaction commits) and delivers
@@ -53,7 +54,7 @@ public class PartnerWebhookDispatcher {
     public int dispatchDue() {
         List<Long> ids = tx.execute(s -> {
             Instant now = Instant.now();
-            List<Long> due = logRepository.lockDueIds(now, BATCH);
+            List<Long> due = logRepository.lockDueIds(now, PageRequest.of(0, BATCH));
             if (!due.isEmpty()) {
                 logRepository.lease(due, now.plus(LEASE));
             }

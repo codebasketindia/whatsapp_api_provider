@@ -6,7 +6,7 @@ import { BadgeIndianRupee, Download, ExternalLink, Image, Megaphone, MoreVertica
 import * as regApi from '../../../../api/endpoints/registrations';
 import { getErrorMessage } from '../../../../api/axios';
 import {
-  Badge, Button, Card, CopyButton, DataTable, DateTime, DropdownMenu, IconButton, Input, Modal, PageHeader, QueryState, SearchInput, Select, StatCard, StatusBadge,
+  Badge, Button, Card, CopyButton, DataTable, DateTime, DropdownMenu, EmptyState, IconButton, Input, Modal, PageHeader, QueryState, SearchInput, Select, StatCard, StatusBadge,
 } from '../../../../components/ui';
 import { formatMoney, formatNumber, formatPhone } from '../../../../lib/format';
 import { istLocalToIso, nowIstLocal } from '../../campaigns/components/schedule';
@@ -133,7 +133,7 @@ export default function RegistrationDetailPage() {
             onRetry={regs.refetch}
             onPageChange={setPage}
             rowKey={(r) => r.uid}
-            empty={{ title: 'No registrations yet', text: 'Share the link to start.' }}
+            empty={<EmptyState compact title="No registrations yet" text="Share the link to start." />}
             columns={[
               { key: 'passNo', header: 'Pass no.', primary: true, render: (r) => <span className="whitespace-nowrap font-mono text-sm">{r.passNo || '—'}</span> },
               { key: 'name', header: 'Name' },

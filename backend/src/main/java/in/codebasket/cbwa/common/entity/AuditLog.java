@@ -8,8 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -37,10 +35,10 @@ public class AuditLog {
     private String entityType;
     private String entityId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String oldValue;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String newValue;
 
     private String ip;

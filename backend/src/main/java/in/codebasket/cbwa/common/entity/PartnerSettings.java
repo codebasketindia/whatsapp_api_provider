@@ -1,6 +1,8 @@
 package in.codebasket.cbwa.common.entity;
 
+import in.codebasket.cbwa.config.StringListConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
@@ -8,8 +10,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -36,12 +36,12 @@ public class PartnerSettings {
     private BigDecimal lowBalanceThreshold;
     private Instant lowBalanceAlertedAt;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false)
+    @Convert(converter = StringListConverter.class)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private List<String> optOutKeywords = new ArrayList<>(List.of("STOP", "UNSUBSCRIBE"));
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false)
+    @Convert(converter = StringListConverter.class)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private List<String> optInKeywords = new ArrayList<>(List.of("START"));
 
     private String optOutAutoReply;

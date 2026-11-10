@@ -7,6 +7,7 @@ import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -24,9 +25,9 @@ public interface ScheduledMessageRepository extends JpaRepository<ScheduledMessa
     @Query(value = """
             select id from scheduled_messages
              where status = 'SCHEDULED' and scheduled_at <= :now
-             order by scheduled_at, id limit :limit for update skip locked
+             order by scheduled_at, id for update skip locked
             """, nativeQuery = true)
-    List<Long> lockDueIds(@Param("now") Instant now, @Param("limit") int limit);
+    List<Long> lockDueIds(@Param("now") Instant now, Pageable pageable);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update ScheduledMessage s set s.status = in.codebasket.cbwa.common.constants.ScheduledStatus.SENDING, s.attemptedAt = :now"

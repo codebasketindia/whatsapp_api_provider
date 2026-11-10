@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as travelApi from '../../../../api/endpoints/travel';
 import { getErrorMessage, getFieldErrors } from '../../../../api/axios';
-import { Button, ConfirmDialog, DataTable, Drawer, Input, PhoneInput, SearchInput, Select, StatusBadge, Textarea } from '../../../../components/ui';
+import { Button, ConfirmDialog, DataTable, Drawer, EmptyState, Input, PhoneInput, SearchInput, Select, StatusBadge, Textarea } from '../../../../components/ui';
 import { formatMoney, formatPhone } from '../../../../lib/format';
 import { BOOKING_STATUS, bookingToForm, formToBooking } from './travelHelpers';
 
@@ -88,7 +88,7 @@ export default function BookingsTab() {
         onPageChange={setPage}
         rowKey={(b) => b.uid}
         onRowClick={(b) => setDrawer({ item: b })}
-        empty={{ title: pk.length ? 'No bookings yet' : 'Add a package first' }}
+        empty={<EmptyState compact title={pk.length ? 'No bookings yet' : 'Add a package first'} />}
         columns={[
           { key: 'customerName', header: 'Customer', primary: true, render: (b) => b.customerName || formatPhone(b.phone) },
           { key: 'phone', header: 'WhatsApp', render: (b) => formatPhone(b.phone) },

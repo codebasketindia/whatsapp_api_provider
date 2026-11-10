@@ -14,8 +14,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -77,6 +75,6 @@ public class PaymentOrder extends AuditableEntity {
 
     private Long invoiceId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "LONGTEXT")
     private String rawPayload;
 }

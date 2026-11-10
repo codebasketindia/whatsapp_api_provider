@@ -25,6 +25,7 @@ import in.codebasket.cbwa.common.entity.PhoneNumber;
 import in.codebasket.cbwa.common.repository.PhoneNumberRepository;
 import in.codebasket.cbwa.common.service.sender.SenderAccessService;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.PageRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
@@ -185,7 +186,7 @@ public class ScheduledMessageService {
     /** Used by the job: claims due rows with SKIP LOCKED so two app instances never send one twice. */
     public List<Long> claimDue(int limit) {
         List<Long> ids = tx.execute(st -> {
-            List<Long> due = repository.lockDueIds(Instant.now(), limit);
+            List<Long> due = repository.lockDueIds(Instant.now(), PageRequest.of(0, limit));
             if (!due.isEmpty()) {
                 repository.markSending(due, Instant.now());
             }

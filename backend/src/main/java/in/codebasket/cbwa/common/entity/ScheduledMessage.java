@@ -11,8 +11,6 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -35,8 +33,7 @@ public class ScheduledMessage extends AuditableEntity {
     @Column(nullable = false)
     private String type;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String request;
 
     private String preview;
