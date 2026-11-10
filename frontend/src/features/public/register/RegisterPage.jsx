@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
@@ -13,6 +13,7 @@ import { passStatusText } from './registerHelpers';
 import { comboApplies, computeTotals, optionalIds, rupees, toggleCombo, toggleId } from './bookingHelpers';
 import PackageIcon from './PackageIcon';
 import SuccessAnimation from './SuccessAnimation';
+import ComboCelebration from './ComboCelebration';
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter your full name').max(80, 'Up to 80 letters').regex(/^[\p{L}\p{M} .'-]+$/u, 'Use letters only'),
@@ -277,6 +278,16 @@ export default function RegisterPage() {
   const feeTotal = feeItems.reduce((a, p) => a + Number(p.salePrice || 0), 0);
   const passTotal = Math.max(0, amount - feeTotal);
   const price = (v) => (v > 0 ? rupees(v) : 'FREE');
+  // Congratulations the moment the combo becomes complete (banner tap or the last of its passes).
+  const comboNow = comboApplies(packages, sel, combo);
+  const wasCombo = useRef(null);
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (selected === null) return;
+    if (wasCombo.current === false && comboNow) setCelebrate(true);
+    wasCombo.current = comboNow;
+  }, [comboNow, selected]);
+  const endCelebrate = useCallback(() => setCelebrate(false), []);
 
   const pay = async (res) => {
     const p = res.payment;
@@ -386,6 +397,7 @@ export default function RegisterPage() {
       </div>
 
       <DetailsSheet p={info} onClose={() => setInfo(null)} />
+      {celebrate && <ComboCelebration discount={totals.comboDiscount} onClose={endCelebrate} />}
 
       {sheet && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setSheet(false)} role="dialog" aria-modal="true" aria-label="Registration">
