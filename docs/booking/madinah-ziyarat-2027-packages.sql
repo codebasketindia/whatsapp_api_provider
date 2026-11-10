@@ -28,7 +28,7 @@ UPDATE registration_forms
        hero_image_url = '/ziyarat/hajj-2027-banner.jpg', page_heading = 'Apna Ziyarat Pass Chuniye',
        page_note = 'Paid pass rates Free Pass holders ke liye', cta_label = 'Register Karein',
        combo_title = 'Teeno Paid Pass • 7 Bus Rounds', combo_subtitle = 'Limited Seats • 15 December 2026 tak',
-       combo_codes = 'SMM,AMM,ACZ', combo_mrp = 20000.00, combo_price = 10000.00,
+       combo_codes = 'SMM,AMM,ACZ', combo_mrp = 20000.00, combo_price = 9000.00,
        combo_valid_until = '2026-12-15 18:29:59.999999', updated_at = UTC_TIMESTAMP(6)
  WHERE slug = 'madinah-ziyarat-2027';
 

@@ -371,6 +371,9 @@ export default function RegisterPage() {
                     <span className="shrink-0 font-semibold">{price(Number(p.salePrice))}</span>
                   </li>
                 ))}
+                {totals.comboDiscount > 0 && (
+                  <li className="flex items-start justify-between gap-3 py-2 text-[#0b5a33]"><span className="min-w-0 break-words">Combo discount</span><span className="shrink-0 font-semibold">− {rupees(totals.comboDiscount)}</span></li>
+                )}
                 <li className="flex items-center justify-between gap-3 py-2 font-semibold"><span>Passes total</span><span>{price(passTotal)}</span></li>
                 {feeItems.map((p) => (
                   <li key={p.id} className="flex items-start justify-between gap-3 py-2">
