@@ -90,7 +90,7 @@ public class RegistrationFormService {
                           java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt,
                           List<PackageDto> packages, String termsText, String privacyText, String heroImageUrl, String pageHeading,
                           String pageNote, String ctaLabel, String comboTitle, String comboSubtitle, String comboCodes,
-                          java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil) {
+                          java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil, String invoiceName) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -110,7 +110,8 @@ public class RegistrationFormService {
                               @Size(max = 500) String heroImageUrl, @Size(max = 160) String pageHeading, @Size(max = 300) String pageNote,
                               @Size(max = 60) String ctaLabel, @Size(max = 160) String comboTitle, @Size(max = 200) String comboSubtitle,
                               @Size(max = 200) String comboCodes, @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboMrp,
-                              @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboPrice, Instant comboValidUntil) {
+                              @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboPrice, Instant comboValidUntil,
+                              @Size(max = 160) String invoiceName) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -134,7 +135,7 @@ public class RegistrationFormService {
                                  @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal salePrice,
                                  Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid,
                                  @Size(max = 500) String imageUrl, Boolean issuePass,
-                                 @Pattern(regexp = "TICKET|FORM_DESIGN", message = "TICKET or FORM_DESIGN") String passStyle) {
+                                 @Pattern(regexp = "TICKET|FORM_DESIGN|ZIYARAT_CARD", message = "TICKET, FORM_DESIGN or ZIYARAT_CARD") String passStyle) {
     }
 
     @Transactional(readOnly = true)
@@ -449,6 +450,7 @@ public class RegistrationFormService {
         f.setComboMrp(req.comboMrp());
         f.setComboPrice(req.comboPrice());
         f.setComboValidUntil(req.comboValidUntil());
+        f.setInvoiceName(trimToNull(req.invoiceName()));
         if (f.getComboCodes() != null && f.getComboPrice() == null) {
             throw AppException.field("comboPrice", "Enter the combo price");
         }
@@ -521,7 +523,7 @@ public class RegistrationFormService {
                 f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt(),
                 packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
                 f.getCtaLabel(), f.getComboTitle(), f.getComboSubtitle(), f.getComboCodes(), f.getComboMrp(), f.getComboPrice(),
-                f.getComboValidUntil());
+                f.getComboValidUntil(), f.getInvoiceName());
     }
 
     private List<PackageDto> packageDtos(RegistrationForm f) {

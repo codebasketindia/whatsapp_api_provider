@@ -119,4 +119,7 @@ public class RegistrationForm extends AuditableEntity {
     private java.math.BigDecimal comboMrp;
     private java.math.BigDecimal comboPrice;
     private Instant comboValidUntil;
+
+    /** Seller name on invoices; null = partner's business name. */
+    private String invoiceName;
 }

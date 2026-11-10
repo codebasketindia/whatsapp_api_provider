@@ -47,7 +47,7 @@ public class BookingDocuments {
         PdfPTable head = new PdfPTable(new float[] {3, 2});
         head.setWidthPercentage(100);
         PdfPCell left = cell(Rectangle.NO_BORDER);
-        left.addElement(new Paragraph(partner.getBusinessName(), title));
+        left.addElement(new Paragraph(form.getInvoiceName() != null ? form.getInvoiceName() : partner.getBusinessName(), title));
         left.addElement(new Paragraph(join(partner.getAddressLine1(), partner.getAddressLine2(), partner.getCity(), partner.getState(), partner.getPincode()), small));
         left.addElement(new Paragraph(join(partner.getMobile() == null ? null : "Phone: " + partner.getMobile(), partner.getEmail()), small));
         head.addCell(left);

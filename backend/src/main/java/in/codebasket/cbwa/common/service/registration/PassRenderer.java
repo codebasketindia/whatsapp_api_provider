@@ -37,6 +37,7 @@ public class PassRenderer {
     private static final Map<String, String> BUILT_IN = Map.of(BUILT_IN_HARMAIN, "pass-designs/harmain.jpg");
 
     private final Font baseFont;
+    private final Font serifFont;
 
     public PassRenderer() {
         Font f;
@@ -47,6 +48,13 @@ public class PassRenderer {
             f = new Font(Font.SANS_SERIF, Font.BOLD, 12);
         }
         this.baseFont = f;
+        Font serif;
+        try (InputStream in = new ClassPathResource("fonts/DejaVuSerif-Bold.ttf").getInputStream()) {
+            serif = Font.createFont(Font.TRUETYPE_FONT, in);
+        } catch (Exception e) {
+            serif = new Font(Font.SERIF, Font.BOLD, 12);
+        }
+        this.serifFont = serif;
     }
 
     public static boolean isBuiltIn(String key) {
@@ -235,6 +243,122 @@ public class PassRenderer {
         return jpeg(img);
     }
 
+    /**
+     * Green / gold portrait Ziyarat card (900 x 1600 artwork, drawn at 2x): pass title in the arch, link title in the
+     * gold ribbon, the four details on the left and the QR code (with the Kaaba mark in the middle) on the right.
+     */
+    public byte[] renderZiyaratCard(TicketData t) {
+        int s = 2;
+        BufferedImage bg = image(resource("pass-designs/ziyarat-card.jpg"));
+        BufferedImage img = new BufferedImage(bg.getWidth() * s, bg.getHeight() * s, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+            g.drawImage(bg, 0, 0, img.getWidth(), img.getHeight(), null);
+            g.scale(s, s);
+
+            // pass title: up to two centred lines in the green arch (y 552-690)
+            String title = nz(t.passTitle());
+            Font tf = serifFont;
+            java.util.List<String> lines = java.util.List.of(title);
+            for (float size = 56; size >= 28; size -= 2) {
+                tf = (canShow(serifFont, title) ? serifFont : fontFor(title)).deriveFont(size);
+                lines = wrap(g, title, tf, 660);
+                if (lines.size() <= 2) {
+                    break;
+                }
+            }
+            var fm = g.getFontMetrics(tf);
+            float lh = tf.getSize2D() * 1.12f;
+            float top = 621 - lh * lines.size() / 2f + fm.getAscent() - (fm.getAscent() - fm.getDescent()) * 0.08f;
+            g.setFont(tf);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                float x = 450 - fm.stringWidth(line) / 2f, y = top + i * lh;
+                g.setColor(new Color(0, 0, 0, 110));
+                g.drawString(line, x + 2, y + 3);
+                g.setColor(new Color(0xFBF1D6));
+                g.drawString(line, x, y);
+            }
+
+            // link title in the gold ribbon
+            g.setColor(new Color(0x0B3D23));
+            centre(g, nz(t.eventTitle()), 450, 738, 470, 30f);
+
+            // details
+            g.setColor(new Color(0x14213D));
+            int[] baselines = {884, 987, 1089, 1190};
+            String[] values = {t.name(), t.mobile(), t.bookingNo(), t.passNo()};
+            for (int i = 0; i < 4; i++) {
+                fit(g, nz(values[i]), 152, baselines[i], 330, 31f);
+            }
+
+            // QR with the Kaaba mark
+            int side = 262, qx = 560, qy = 843;
+            g.drawImage(qr(t.qrText(), side * s, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.H), qx, qy, side, side, null);
+            BufferedImage logo = image(resource("pass-designs/ziyarat-qr-logo.png"));
+            int ls = 62, lx = qx + (side - ls) / 2, ly = qy + (side - ls) / 2;
+            g.setColor(Color.WHITE);
+            g.fillOval(lx - 4, ly - 4, ls + 8, ls + 8);
+            g.drawImage(logo, lx, ly, ls, ls, null);
+        } finally {
+            g.dispose();
+        }
+        return jpeg(img);
+    }
+
+    private static byte[] resource(String path) {
+        try (InputStream in = new ClassPathResource(path).getInputStream()) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new IllegalStateException("Pass artwork missing: " + path, e);
+        }
+    }
+
+    private static BufferedImage image(byte[] bytes) {
+        try {
+            return javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static boolean canShow(Font f, String text) {
+        return f.canDisplayUpTo(text) == -1;
+    }
+
+    private static java.util.List<String> wrap(Graphics2D g, String text, Font f, int maxW) {
+        var fm = g.getFontMetrics(f);
+        java.util.List<String> out = new java.util.ArrayList<>();
+        String line = "";
+        for (String word : text.trim().split("\\s+")) {
+            String next = line.isEmpty() ? word : line + " " + word;
+            if (!line.isEmpty() && fm.stringWidth(next) > maxW) {
+                out.add(line);
+                line = word;
+            } else {
+                line = next;
+            }
+        }
+        if (!line.isEmpty()) {
+            out.add(line);
+        }
+        return out;
+    }
+
+    private void centre(Graphics2D g, String text, int cx, int y, int maxW, float size) {
+        Font f = fontFor(text).deriveFont(size);
+        while (g.getFontMetrics(f).stringWidth(text) > maxW && size > 14) {
+            size -= 1;
+            f = f.deriveFont(size);
+        }
+        g.setFont(f);
+        g.drawString(text, cx - g.getFontMetrics(f).stringWidth(text) / 2f, y);
+    }
+
     private void fit(Graphics2D g, String text, int x, int y, int maxW, float size) {
         Font f = fontFor(text).deriveFont(size);
         while (g.getFontMetrics(f).stringWidth(text) > maxW && size > 14) {
@@ -251,9 +375,13 @@ public class PassRenderer {
 
     /** QR code with high error correction, black on white. */
     static BufferedImage qr(String text, int size) {
+        return qr(text, size, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.Q);
+    }
+
+    static BufferedImage qr(String text, int size, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel level) {
         try {
             var hints = new java.util.EnumMap<com.google.zxing.EncodeHintType, Object>(com.google.zxing.EncodeHintType.class);
-            hints.put(com.google.zxing.EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.Q);
+            hints.put(com.google.zxing.EncodeHintType.ERROR_CORRECTION, level);
             hints.put(com.google.zxing.EncodeHintType.MARGIN, 1);
             var matrix = new com.google.zxing.qrcode.QRCodeWriter().encode(text, com.google.zxing.BarcodeFormat.QR_CODE, size, size, hints);
             return com.google.zxing.client.j2se.MatrixToImageWriter.toBufferedImage(matrix);

@@ -19,6 +19,7 @@ export default function PageSettingsCard({ v, set, errors = {} }) {
         {f('comboValidUntil', 'Combo valid until (IST)', { type: 'datetime-local' })}
         {f('comboMrp', 'Combo MRP (₹)', { type: 'number', min: 0 })}
         {f('comboPrice', 'Combo price (₹)', { type: 'number', min: 0 })}
+        {f('invoiceName', 'Name on invoices', { maxLength: 160, placeholder: 'Your business name', hint: 'Blank = your business name from the profile.', className: 'md:col-span-2' })}
       </div>
     </Card>
   );
