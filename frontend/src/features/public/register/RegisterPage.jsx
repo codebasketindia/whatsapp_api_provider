@@ -143,6 +143,19 @@ function FeeBox({ p }) {
   );
 }
 
+/** Full link description; **bold** is shown bold. Long text goes in a card, short text sits under the heading. */
+function Description({ text }) {
+  const long = text.length > 160 || text.split('\n').length > 3;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).map((t, i) => (
+    /^\*\*[^*]+\*\*$/.test(t) ? <b key={i} className="font-bold text-[#0b4d2c]">{t.slice(2, -2)}</b> : t
+  ));
+  return long ? (
+    <div className="bk-card bk-up whitespace-pre-line break-words rounded-2xl p-4 text-left text-[14px] leading-relaxed text-[#374151]">{parts}</div>
+  ) : (
+    <p className="whitespace-pre-line break-words px-1 text-center text-[14px] leading-relaxed text-[#4b5563]">{parts}</p>
+  );
+}
+
 function DetailsSheet({ p, onClose }) {
   if (!p) return null;
   return (
@@ -306,7 +319,7 @@ export default function RegisterPage() {
     <Shell>
       <Hero f={f} />
       <div className="space-y-3 px-3 pt-4 sm:px-4">
-        {f.description && <p className="whitespace-pre-line break-words px-1 text-center text-[14px] leading-relaxed text-[#4b5563]">{f.description.split(/\n\n+/)[0]}</p>}
+        {f.description && <Description text={f.description} />}
         {cards.map((p, i) => (
           <PassCard key={p.id} p={p} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
         ))}
