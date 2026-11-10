@@ -122,4 +122,7 @@ public class RegistrationForm extends AuditableEntity {
 
     /** Seller name on invoices; null = partner's business name. */
     private String invoiceName;
+
+    /** Small line at the bottom of Ziyarat-card passes, e.g. an emergency number. */
+    private String passSupportLine;
 }

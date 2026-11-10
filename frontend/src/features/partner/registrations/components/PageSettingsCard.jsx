@@ -20,6 +20,7 @@ export default function PageSettingsCard({ v, set, errors = {} }) {
         {f('comboMrp', 'Combo MRP (₹)', { type: 'number', min: 0 })}
         {f('comboPrice', 'Combo price (₹)', { type: 'number', min: 0 })}
         {f('invoiceName', 'Name on invoices', { maxLength: 160, placeholder: 'Your business name', hint: 'Blank = your business name from the profile.', className: 'md:col-span-2' })}
+        {f('passSupportLine', 'Line at the bottom of Ziyarat-card passes', { maxLength: 120, placeholder: 'Emergency Support : +966590550490', className: 'md:col-span-2' })}
       </div>
     </Card>
   );

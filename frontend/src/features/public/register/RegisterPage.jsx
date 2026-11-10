@@ -29,6 +29,7 @@ const STYLES = `
   .bk-form input, .bk-form select, .bk-form .field-base { background:#fffdf8 !important; color:#1f2937 !important; border-color:#e2d6bb !important; }
   .bk-form label, .bk-form .label-base { color:#0b4d2c !important; }
   .bk-form .text-muted { color:#6b7280 !important; }
+  .bk-form .text-ink { color:#1f2937 !important; }
   .bk-form .bg-surface-2 { background:#f3ecdc !important; color:#1f2937 !important; }
   .bk-strike { position: relative; display: inline-block; }
   .bk-strike::after { content: ''; position: absolute; left: -4%; right: -4%; top: 52%; height: 2px; background: #d23b2f; transform: rotate(-8deg); }
@@ -237,6 +238,12 @@ export default function RegisterPage() {
   const sel = selected || [];
   const totals = computeTotals(packages, sel, combo);
   const amount = packages.length ? totals.total : Number(f?.feeAmount || 0);
+  // Passes the person picked (the mandatory registration fee is shown on its own, at checkout).
+  const picked = totals.items.filter((p) => !p.mandatory);
+  const feeItems = totals.items.filter((p) => p.mandatory);
+  const feeTotal = feeItems.reduce((a, p) => a + Number(p.salePrice || 0), 0);
+  const passTotal = Math.max(0, amount - feeTotal);
+  const price = (v) => (v > 0 ? rupees(v) : 'FREE');
 
   const pay = async (res) => {
     const p = res.payment;
@@ -333,8 +340,8 @@ export default function RegisterPage() {
           <>
             {packages.length > 0 && (
               <p className="text-center text-[13px] text-[#374151]">
-                {totals.passes} pass{totals.passes === 1 ? '' : 'es'} selected · Total <b className="text-[#0b4d2c]">{amount > 0 ? rupees(amount) : 'Free'}</b>
-                {totals.savings > 0 && <> · You save <b className="text-[#0b5a33]">{rupees(totals.savings)}</b></>}
+                Selected Pass: <b className="text-[#0b4d2c]">{picked.length}</b> · Total <b className="text-[#0b4d2c]">{price(passTotal)}</b>
+                {totals.comboDiscount > 0 && <> · Combo saving <b className="text-[#0b5a33]">{rupees(totals.comboDiscount)}</b></>}
               </p>
             )}
             <button type="button" onClick={() => setSheet(true)}
@@ -356,16 +363,22 @@ export default function RegisterPage() {
             </div>
             {packages.length > 0 && (
               <ul className="mb-4 divide-y divide-[#f0e8d6] rounded-2xl border border-[#eadfc6] bg-[#fffdf7] px-3 text-sm">
-                {totals.items.map((p) => (
+                <li className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-[#8a7f6a]">Selected Pass ({picked.length})</li>
+                {picked.length === 0 && <li className="py-2 text-[#6b7280]">No pass selected</li>}
+                {picked.map((p) => (
                   <li key={p.id} className="flex items-start justify-between gap-3 py-2">
                     <span className="min-w-0 break-words">{p.name}</span>
-                    <span className="shrink-0 font-semibold">{Number(p.salePrice) === 0 ? 'FREE' : rupees(p.salePrice)}</span>
+                    <span className="shrink-0 font-semibold">{price(Number(p.salePrice))}</span>
                   </li>
                 ))}
-                {totals.comboDiscount > 0 && (
-                  <li className="flex items-start justify-between gap-3 py-2 text-[#0b5a33]"><span className="min-w-0 break-words">Combo offer: {combo.title}</span><span className="shrink-0 font-semibold">− {rupees(totals.comboDiscount)}</span></li>
-                )}
-                <li className="flex items-center justify-between py-2 text-base font-extrabold text-[#0b4d2c]"><span>Total</span><span>{amount > 0 ? rupees(amount) : 'Free'}</span></li>
+                <li className="flex items-center justify-between gap-3 py-2 font-semibold"><span>Passes total</span><span>{price(passTotal)}</span></li>
+                {feeItems.map((p) => (
+                  <li key={p.id} className="flex items-start justify-between gap-3 py-2">
+                    <span className="min-w-0 break-words">{p.name}</span>
+                    <span className="shrink-0 font-semibold">{rupees(p.salePrice)}</span>
+                  </li>
+                ))}
+                <li className="flex items-center justify-between py-2 text-base font-extrabold text-[#0b4d2c]"><span>Total payable</span><span>{amount > 0 ? rupees(amount) : 'Free'}</span></li>
               </ul>
             )}
             <form id="bk-form" className="space-y-4" noValidate onSubmit={handleSubmit((v) => submit.mutate(v))}>
@@ -377,7 +390,7 @@ export default function RegisterPage() {
               {f.collectPhoto && <FileUpload label="Your photo (optional)" value={photo} onChange={setPhoto} accept="image/jpeg,image/png" maxSizeMB={5} hint="JPG or PNG, up to 5 MB." />}
               <Controller name="consent" control={control} render={({ field }) => (
                 <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} error={formState.errors.consent?.message}
-                          label={<span>{f.consentText}{(f.hasTerms || f.hasPrivacy) && <> — I accept the {f.hasTerms && legalLink('terms', 'Terms & Conditions')}{f.hasTerms && f.hasPrivacy && ' and '}{f.hasPrivacy && legalLink('privacy', 'Privacy Policy')}.</>}</span>} />
+                          label={<span className="text-[#1f2937]">{f.consentText}{(f.hasTerms || f.hasPrivacy) && <> — I accept the {f.hasTerms && legalLink('terms', 'Terms & Conditions')}{f.hasTerms && f.hasPrivacy && ' and '}{f.hasPrivacy && legalLink('privacy', 'Privacy Policy')}.</>}</span>} />
               )} />
               <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
               {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}

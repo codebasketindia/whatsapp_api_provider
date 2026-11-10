@@ -35,6 +35,9 @@ UPDATE registration_forms
 -- 3) Invoice name (needs the invoice_name column from V10)
 UPDATE registration_forms SET invoice_name = 'HFHU Vision Private Limited' WHERE slug = 'madinah-ziyarat-2027';
 
+-- 4) Emergency number on Ziyarat-card passes (needs the pass_support_line column from V12)
+UPDATE registration_forms SET pass_support_line = 'Emergency Support : +966590550490' WHERE slug = 'madinah-ziyarat-2027';
+
 -- Check
 SELECT p.code, p.name, p.mrp, p.sale_price, p.mandatory, p.issue_pass, p.pass_style
   FROM registration_packages p JOIN registration_forms f ON f.id = p.form_id

@@ -199,7 +199,7 @@ public class BookingService {
         if (p != null && "ZIYARAT_CARD".equals(p.getPassStyle())) {
             return renderer.renderZiyaratCard(new PassRenderer.TicketData(partner.getBusinessName(), f.getTitle(),
                     p.getPassTitle() != null ? p.getPassTitle() : passTitle(it.getName()), r.getName(), mobile, r.getPassNo(),
-                    it.getPassNo(), qr));
+                    it.getPassNo(), qr, f.getPassSupportLine()));
         }
         boolean useFormDesign = p != null && ("FORM_DESIGN".equals(p.getPassStyle()) || (p.isMandatory() && f.isPassEnabled()));
         Long designId = p == null ? null : p.getPassDesignFileId();

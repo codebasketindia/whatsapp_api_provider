@@ -21,7 +21,7 @@ const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
   feeAmount: '', feeLabel: '', packages: [], termsText: '', privacyText: '',
-  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '',
+  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '', passSupportLine: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -45,6 +45,7 @@ const fromDto = (f) => ({
   comboTitle: f.comboTitle || '', comboSubtitle: f.comboSubtitle || '', comboCodes: f.comboCodes || '',
   comboMrp: f.comboMrp ?? '', comboPrice: f.comboPrice ?? '', comboValidUntil: f.comboValidUntil ? isoToIstLocal(f.comboValidUntil) : '',
   invoiceName: f.invoiceName || '',
+  passSupportLine: f.passSupportLine || '',
 });
 
 function toBody(v) {
@@ -80,6 +81,7 @@ function toBody(v) {
     comboCodes: v.comboCodes?.trim() || null, comboMrp: v.comboMrp === '' ? null : Number(v.comboMrp),
     comboPrice: v.comboPrice === '' ? null : Number(v.comboPrice), comboValidUntil: v.comboValidUntil ? istLocalToIso(v.comboValidUntil) : null,
     invoiceName: v.invoiceName?.trim() || null,
+    passSupportLine: v.passSupportLine?.trim() || null,
   };
 }
 

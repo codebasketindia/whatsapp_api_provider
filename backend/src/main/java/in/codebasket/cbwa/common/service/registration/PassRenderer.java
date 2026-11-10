@@ -78,7 +78,11 @@ public class PassRenderer {
 
     /** What a generated (design-less) ticket shows. */
     public record TicketData(String businessName, String eventTitle, String passTitle, String name, String mobile,
-                             String bookingNo, String passNo, String qrText) {
+                             String bookingNo, String passNo, String qrText, String supportLine) {
+        public TicketData(String businessName, String eventTitle, String passTitle, String name, String mobile,
+                          String bookingNo, String passNo, String qrText) {
+            this(businessName, eventTitle, passTitle, name, mobile, bookingNo, passNo, qrText, null);
+        }
     }
 
     public byte[] render(byte[] design, PassLayout layout, PassData data) {
@@ -304,6 +308,14 @@ public class PassRenderer {
             g.setColor(Color.WHITE);
             g.fillOval(lx - 4, ly - 4, ls + 8, ls + 8);
             g.drawImage(logo, lx, ly, ls, ls, null);
+
+            // small support line at the very bottom, under the HAJJ 2027 seal
+            if (t.supportLine() != null && !t.supportLine().isBlank()) {
+                g.setColor(new Color(0, 0, 0, 90));
+                centre(g, t.supportLine().trim(), 451, 1575, 760, 20f);
+                g.setColor(new Color(0xF3DC9A));
+                centre(g, t.supportLine().trim(), 450, 1574, 760, 20f);
+            }
         } finally {
             g.dispose();
         }

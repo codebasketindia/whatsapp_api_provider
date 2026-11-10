@@ -23,7 +23,7 @@ class ZiyaratCardTest {
         PassRenderer renderer = new PassRenderer();
         for (String title : new String[] {"Makkah–Madinah Khaas Ziyarat Pass", "Taif–Jeddah–Badr Ziyarat Pass", "A very long package name that needs three lines to fit"}) {
             byte[] jpg = renderer.renderZiyaratCard(new PassRenderer.TicketData("HFHU", "Ziyarat Passes for HAJJ 2027", title,
-                    "Imran Shaikh", "+91 98059 92702", "HZ27-000004", "HZ27-000004-SMM", link));
+                    "Imran Shaikh", "+91 98059 92702", "HZ27-000004", "HZ27-000004-SMM", link, "Emergency Support : +966590550490"));
             BufferedImage img = ImageIO.read(new ByteArrayInputStream(jpg));
             assertThat(img.getWidth()).isEqualTo(1800);
             assertThat(img.getHeight()).isEqualTo(3200);
