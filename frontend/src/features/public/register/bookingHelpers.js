@@ -2,13 +2,37 @@
 
 const num = (v) => Number(v ?? 0) || 0;
 
-/** Mandatory packages are always in; returns the chosen packages and the totals. */
-export function computeTotals(packages = [], selectedIds = []) {
+/**
+ * Mandatory packages are always in; returns the chosen packages and the totals. With a combo offer, choosing every
+ * combo package makes them cost the combo price together (the server applies the same rule).
+ */
+export function computeTotals(packages = [], selectedIds = [], combo = null) {
   const chosen = new Set(selectedIds.map(Number));
   const items = packages.filter((p) => p.mandatory || chosen.has(Number(p.id)));
   const mrp = items.reduce((s, p) => s + num(p.mrp), 0);
-  const total = items.reduce((s, p) => s + num(p.salePrice), 0);
-  return { items, mrp, total, savings: Math.max(0, mrp - total) };
+  let total = items.reduce((s, p) => s + num(p.salePrice), 0);
+  let comboDiscount = 0;
+  if (comboApplies(packages, selectedIds, combo)) {
+    const comboSum = items.filter((p) => combo.codes.includes(p.code)).reduce((s, p) => s + num(p.salePrice), 0);
+    comboDiscount = Math.max(0, comboSum - num(combo.price));
+    total -= comboDiscount;
+  }
+  return { items, mrp, total, comboDiscount, savings: Math.max(0, mrp - total), passes: items.filter((p) => p.issuePass !== false).length };
+}
+
+export function comboIds(packages = [], combo = null) {
+  return combo ? packages.filter((p) => combo.codes.includes(p.code)).map((p) => p.id) : [];
+}
+
+export function comboApplies(packages, selectedIds, combo) {
+  const ids = comboIds(packages, combo);
+  return ids.length > 0 && ids.every((id) => selectedIds.map(Number).includes(Number(id)));
+}
+
+/** Tapping the combo card selects all its packages (or removes them when already all selected). */
+export function toggleCombo(packages, selectedIds, combo) {
+  const ids = comboIds(packages, combo);
+  return comboApplies(packages, selectedIds, combo) ? selectedIds.filter((x) => !ids.includes(x)) : [...new Set([...selectedIds, ...ids])];
 }
 
 /** Optional ids to send (mandatory ones are added by the server anyway). */

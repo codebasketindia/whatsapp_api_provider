@@ -52,4 +52,15 @@ public class RegistrationPackage extends AuditableEntity {
 
     private String passTitle;
     private Long passDesignFileId;
+
+    /** Picture by URL (built-in /ziyarat/*.jpg or any https image) when no file was uploaded. */
+    private String imageUrl;
+
+    /** false for a fee-only line such as the registration fee. */
+    @Column(nullable = false)
+    private boolean issuePass = true;
+
+    /** TICKET (generated pass) or FORM_DESIGN (the link's pass design with the QR in the photo box). */
+    @Column(nullable = false)
+    private String passStyle = "TICKET";
 }

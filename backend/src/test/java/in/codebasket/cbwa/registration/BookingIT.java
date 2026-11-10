@@ -165,6 +165,42 @@ class BookingIT extends AbstractIntegrationTest {
         assertThat(itemRepository.findById(items.get(0).getId()).orElseThrow().getRedeemedAt()).isNull();
     }
 
+    @Test
+    void comboOfferFreePassAndFeeOnlyLine() throws Exception {
+        String form = send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/partner/registration-forms"), """
+                {"title":"Ziyarat Passes for HAJJ 2027","slug":"ziyarat-2027","senderId":%d,"passPrefix":"HZ",
+                 "heroImageUrl":"/ziyarat/hajj-2027-banner.jpg","pageHeading":"Apna Ziyarat Pass Chuniye","ctaLabel":"Register Karein",
+                 "comboTitle":"Teeno Paid Pass","comboCodes":"smm, amm,ACZ","comboMrp":20000,"comboPrice":9000,
+                 "packages":[
+                   {"code":"REG","name":"Registration / Person","mrp":49,"salePrice":49,"mandatory":true,"issuePass":false},
+                   {"code":"HZS","name":"Haramain Ziyarat Show Pass","mrp":0,"salePrice":0,"passStyle":"FORM_DESIGN","imageUrl":"/ziyarat/haramain-show.jpg"},
+                   {"code":"SMM","name":"Khaas","mrp":6000,"salePrice":3000},
+                   {"code":"AMM","name":"Mazeed","mrp":6000,"salePrice":3000},
+                   {"code":"ACZ","name":"Taif","mrp":8000,"salePrice":4000}]}""".formatted(sender.getId()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.comboCodes").value("SMM,AMM,ACZ"))
+                .andReturn().getResponse().getContentAsString();
+        var pk = TestData.json(form).path("data").path("packages");
+        String all = pk.get(1).path("id").asText() + "," + pk.get(2).path("id").asText() + "," + pk.get(3).path("id").asText() + "," + pk.get(4).path("id").asText();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/public/register/ziyarat-2027"))
+                .andExpect(jsonPath("$.data.combo.price").value("9000.00"))
+                .andExpect(jsonPath("$.data.pageHeading").value("Apna Ziyarat Pass Chuniye"))
+                .andExpect(jsonPath("$.data.packages[1].imageUrl").value("/ziyarat/haramain-show.jpg"));
+        String res = register("Ayesha Khan", "9876501234", all).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.amount").value("9049.00"))
+                .andExpect(jsonPath("$.data.payment.amount").value(904900))
+                .andExpect(jsonPath("$.data.booking.discountAmount").value("1000.00"))
+                .andReturn().getResponse().getContentAsString();
+        String uid = TestData.json(res).path("data").path("uid").asText();
+        verify(uid, "order_B1", "pay_C1", sign("order_B1|pay_C1")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.booking.total").value("9049.00"))
+                .andExpect(jsonPath("$.data.booking.items[0].passUrl").doesNotExist())   // registration fee: no pass
+                .andExpect(jsonPath("$.data.booking.items[1].passNo").value("HZ-000001-HZS"))
+                .andExpect(jsonPath("$.data.booking.items.length()").value(5));
+        // Only the free pass + fee: Rs 49, no combo.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_B2\",\"status\":\"created\"}")));
+        register("Imran Shaikh", "9811122233", pk.get(1).path("id").asText()).andExpect(jsonPath("$.data.amount").value("49.00"));
+    }
+
     private ResultActions register(String name, String mobile, String packageIds) throws Exception {
         testData.resetCaches();
         return mockMvc.perform(multipart("/api/public/register/ziyarat-2027").param("name", name).param("mobile", mobile)

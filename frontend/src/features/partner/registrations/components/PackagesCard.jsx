@@ -8,15 +8,16 @@ import { useProtectedUrl } from '../../inbox/components/ChatBubble';
 import PackageIcon, { PACKAGE_ICONS } from '../../../public/register/PackageIcon';
 import { discountPercent, rupees } from '../../../public/register/bookingHelpers';
 
-export const EMPTY_PACKAGE = { id: null, code: '', name: '', description: '', details: '', icon: 'sparkles', image: null, mrp: '', salePrice: '', mandatory: false, active: true, passTitle: '' };
+export const EMPTY_PACKAGE = { id: null, code: '', name: '', description: '', details: '', icon: 'sparkles', image: null, mrp: '', salePrice: '', mandatory: false, active: true, passTitle: '', imageUrl: '', issuePass: true, passStyle: 'TICKET' };
 
-export const packageToForm = (p) => ({ ...EMPTY_PACKAGE, ...p, description: p.description || '', details: p.details || '', icon: p.icon || 'sparkles', passTitle: p.passTitle || '', mrp: p.mrp ?? '', salePrice: p.salePrice ?? '' });
+export const packageToForm = (p) => ({ ...EMPTY_PACKAGE, ...p, description: p.description || '', details: p.details || '', icon: p.icon || 'sparkles', passTitle: p.passTitle || '', imageUrl: p.imageUrl || '', issuePass: p.issuePass !== false, passStyle: p.passStyle || 'TICKET', mrp: p.mrp ?? '', salePrice: p.salePrice ?? '' });
 
 export const formToPackage = (p, i) => ({
   id: p.id || null, code: p.code.trim().toUpperCase(), name: p.name.trim(), description: p.description?.trim() || null,
   details: p.details?.trim() || null, icon: p.icon || null, imageFileUid: p.image?.fileUid || null,
   mrp: Number(p.mrp || 0), salePrice: Number(p.salePrice || 0), mandatory: Boolean(p.mandatory), active: p.active !== false,
   sortOrder: i + 1, passTitle: p.passTitle?.trim() || null,
+  imageUrl: p.imageUrl?.trim() || null, issuePass: p.issuePass !== false, passStyle: p.passStyle || 'TICKET',
 });
 
 function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) {
@@ -40,7 +41,7 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
     <li className="rounded-xl border border-line p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2"><PackageIcon name={p.icon} className="h-5 w-5" /></span>
-        <p className="min-w-0 flex-1 truncate font-semibold">{p.name || `Package ${index + 1}`}</p>
+        <p className="min-w-0 flex-1 break-words font-semibold">{p.name || `Package ${index + 1}`}</p>
         {p.mandatory && <Badge tone="blue">Mandatory</Badge>}
         {!p.active && <Badge tone="gray">Hidden</Badge>}
         {off > 0 && <Badge tone="yellow">{off}% off</Badge>}
@@ -57,6 +58,10 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
                hint={p.mrp && p.salePrice ? `Shown as ${rupees(p.mrp)} → ${rupees(p.salePrice)}` : undefined} />
         <Input className="md:col-span-2" label="Pass title" maxLength={160} value={p.passTitle} placeholder={`${p.name || 'Package'} Pass`} onChange={(e) => set({ passTitle: e.target.value })} />
         <Input className="md:col-span-4" label="Short description" maxLength={1000} value={p.description} onChange={(e) => set({ description: e.target.value })} />
+        <Input className="md:col-span-2" label="Card image URL (optional)" maxLength={500} value={p.imageUrl} placeholder="/ziyarat/makkah.jpg or https://…" error={err('imageUrl')}
+               hint="Used when no image is uploaded." onChange={(e) => set({ imageUrl: e.target.value })} />
+        <Select label="Pass style" value={p.passStyle} onChange={(e) => set({ passStyle: e.target.value })}
+                options={[{ value: 'TICKET', label: 'Ticket pass' }, { value: 'FORM_DESIGN', label: 'Link pass design' }]} />
         <Textarea className="md:col-span-4" label="Full details (shown under “View Full Details”)" rows={3} maxLength={8000} value={p.details} onChange={(e) => set({ details: e.target.value })} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -73,6 +78,7 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
         )}
         <Switch checked={p.mandatory} onChange={(v) => set({ mandatory: v })} label="Mandatory (always included)" />
         <Switch checked={p.active} onChange={(v) => set({ active: v })} label="Show on the page" />
+        <Switch checked={p.issuePass} onChange={(v) => set({ issuePass: v })} label="Issue a QR pass" />
       </div>
     </li>
   );

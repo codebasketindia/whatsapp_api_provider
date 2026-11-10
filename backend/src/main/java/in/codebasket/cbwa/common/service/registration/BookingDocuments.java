@@ -93,6 +93,15 @@ public class BookingDocuments {
             mrp = mrp.add(it.getMrp());
             total = total.add(it.getPrice());
         }
+        BigDecimal discount = r.getDiscountAmount() == null ? BigDecimal.ZERO : r.getDiscountAmount();
+        if (discount.signum() > 0) {
+            t.addCell(pad(new Phrase("", normal), false));
+            t.addCell(pad(new Phrase(r.getDiscountLabel() == null ? "Combo offer" : r.getDiscountLabel(), normal), false));
+            t.addCell(pad(new Phrase("", normal), true));
+            t.addCell(pad(new Phrase("- " + rs(discount), normal), true));
+            t.addCell(pad(new Phrase("- " + rs(discount), bold), true));
+            total = total.subtract(discount);
+        }
         doc.add(t);
 
         PdfPTable sum = new PdfPTable(new float[] {7, 2.5f});

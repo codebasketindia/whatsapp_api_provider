@@ -19,6 +19,8 @@ public interface RegistrationFormRepository extends JpaRepository<RegistrationFo
 
     boolean existsBySlug(String slug);
 
+    boolean existsByHeroImageUrlContaining(String part);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select f from RegistrationForm f where f.id = :id")
     Optional<RegistrationForm> lockById(@Param("id") Long id);

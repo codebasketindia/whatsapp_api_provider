@@ -136,7 +136,8 @@ public class RegistrationService {
     public record PublicFormDto(String slug, String title, String description, String businessName, String consentText,
                                 boolean collectPhoto, boolean passEnabled, boolean open, String closedReason,
                                 java.math.BigDecimal feeAmount, String feeLabel, List<BookingService.PackageView> packages,
-                                boolean hasTerms, boolean hasPrivacy) {
+                                boolean hasTerms, boolean hasPrivacy, String heroImageUrl, String pageHeading, String pageNote,
+                                String ctaLabel, BookingService.ComboView combo) {
     }
 
     public record LegalDto(String formTitle, String businessName, String title, String text) {
@@ -168,7 +169,8 @@ public class RegistrationService {
         return new PublicFormDto(f.getSlug(), f.getTitle(), f.getDescription(), p.getBusinessName(), f.getConsentText(),
                 f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed,
                 packages.isEmpty() && paid(f) ? f.getFeeAmount() : null, f.getFeeLabel(), packages,
-                f.getTermsText() != null && !f.getTermsText().isBlank(), f.getPrivacyText() != null && !f.getPrivacyText().isBlank());
+                f.getTermsText() != null && !f.getTermsText().isBlank(), f.getPrivacyText() != null && !f.getPrivacyText().isBlank(),
+                f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(), f.getCtaLabel(), booking.combo(f));
     }
 
     /** PR5: terms or privacy text of a link, shown on its own page. */
@@ -277,6 +279,8 @@ public class RegistrationService {
             }
             totals = booking.selectItems(f, r, packageIds);
             r.setMrpTotal(totals.mrp());
+            r.setDiscountAmount(totals.discount().signum() > 0 ? totals.discount() : null);
+            r.setDiscountLabel(totals.discountLabel());
         }
         if (withPackages ? totals.total().signum() > 0 : paid(f)) {
             r.setPaymentStatus(PaymentStatus.PENDING);

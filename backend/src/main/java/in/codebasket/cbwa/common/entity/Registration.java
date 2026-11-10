@@ -67,6 +67,8 @@ public class Registration extends BaseEntity {
     private Instant paidAt;
     private String invoiceNo;
     private java.math.BigDecimal mrpTotal;
+    private java.math.BigDecimal discountAmount;
+    private String discountLabel;
 
     private String ip;
     private String userAgent;

@@ -88,7 +88,9 @@ public class RegistrationFormService {
                           String passPrefix, Long passTemplateId, List<String> passTemplateBody, String passCaption,
                           Long contactGroupId, List<String> contactTags, List<FollowUp> followUps, int registrationsCount,
                           java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt,
-                          List<PackageDto> packages, String termsText, String privacyText) {
+                          List<PackageDto> packages, String termsText, String privacyText, String heroImageUrl, String pageHeading,
+                          String pageNote, String ctaLabel, String comboTitle, String comboSubtitle, String comboCodes,
+                          java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -104,7 +106,11 @@ public class RegistrationFormService {
                               @jakarta.validation.constraints.Digits(integer = 6, fraction = 2) java.math.BigDecimal feeAmount,
                               @Size(max = 120) String feeLabel,
                               @Size(max = 12) List<@Valid PackageRequest> packages,
-                              @Size(max = 50000) String termsText, @Size(max = 50000) String privacyText) {
+                              @Size(max = 50000) String termsText, @Size(max = 50000) String privacyText,
+                              @Size(max = 500) String heroImageUrl, @Size(max = 160) String pageHeading, @Size(max = 300) String pageNote,
+                              @Size(max = 60) String ctaLabel, @Size(max = 160) String comboTitle, @Size(max = 200) String comboSubtitle,
+                              @Size(max = 200) String comboCodes, @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboMrp,
+                              @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboPrice, Instant comboValidUntil) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -116,7 +122,7 @@ public class RegistrationFormService {
 
     public record PackageDto(Long id, String code, String name, String description, String details, String icon, FileRef image,
                              java.math.BigDecimal mrp, java.math.BigDecimal salePrice, boolean mandatory, boolean active, int sortOrder,
-                             String passTitle, FileRef passDesign, boolean hasBookings) {
+                             String passTitle, FileRef passDesign, boolean hasBookings, String imageUrl, boolean issuePass, String passStyle) {
     }
 
     /** id null = new package. Packages left out of the list are deleted (or switched off when already booked). */
@@ -126,7 +132,9 @@ public class RegistrationFormService {
                                  @Size(max = 8000) String details, @Size(max = 40) String icon, String imageFileUid,
                                  @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal mrp,
                                  @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal salePrice,
-                                 Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid) {
+                                 Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid,
+                                 @Size(max = 500) String imageUrl, Boolean issuePass,
+                                 @Pattern(regexp = "TICKET|FORM_DESIGN", message = "TICKET or FORM_DESIGN") String passStyle) {
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +221,9 @@ public class RegistrationFormService {
             e.setActive(p.active() == null || p.active());
             e.setSortOrder(p.sortOrder() == null ? order : p.sortOrder());
             e.setPassTitle(trimToNull(p.passTitle()));
+            e.setImageUrl(safeUrl(p.imageUrl(), "packages[" + (order - 1) + "].imageUrl"));
+            e.setIssuePass(p.issuePass() == null || p.issuePass());
+            e.setPassStyle(p.passStyle() == null ? "TICKET" : p.passStyle());
             kept.add(packageRepository.saveAndFlush(e).getId());
             order++;
         }
@@ -227,6 +238,18 @@ public class RegistrationFormService {
                 }
             }
         }
+    }
+
+    /** Images by URL: our own paths (/ziyarat/…, /api/public/…) or https only - never javascript: or data: URLs. */
+    private static String safeUrl(String url, String field) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String u = url.trim();
+        if (!(u.startsWith("/") && !u.startsWith("//")) && !u.startsWith("https://")) {
+            throw AppException.field(field, "Use an https:// link or upload the image");
+        }
+        return u;
     }
 
     private Long ownFile(Long partnerId, String uid, String field) {
@@ -414,6 +437,21 @@ public class RegistrationFormService {
         if (req.privacyText() != null) {
             f.setPrivacyText(trimToNull(req.privacyText()));
         }
+        f.setHeroImageUrl(safeUrl(req.heroImageUrl(), "heroImageUrl"));
+        f.setPageHeading(trimToNull(req.pageHeading()));
+        f.setPageNote(trimToNull(req.pageNote()));
+        f.setCtaLabel(trimToNull(req.ctaLabel()));
+        f.setComboTitle(trimToNull(req.comboTitle()));
+        f.setComboSubtitle(trimToNull(req.comboSubtitle()));
+        String codes = req.comboCodes() == null ? null : String.join(",", java.util.Arrays.stream(req.comboCodes().split(","))
+                .map(c -> c.trim().toUpperCase(Locale.ROOT)).filter(c -> !c.isEmpty()).distinct().toList());
+        f.setComboCodes(codes == null || codes.isEmpty() ? null : codes);
+        f.setComboMrp(req.comboMrp());
+        f.setComboPrice(req.comboPrice());
+        f.setComboValidUntil(req.comboValidUntil());
+        if (f.getComboCodes() != null && f.getComboPrice() == null) {
+            throw AppException.field("comboPrice", "Enter the combo price");
+        }
     }
 
     /** Builds the message for a sample recipient so template/variable/media mistakes show up while saving. */
@@ -481,7 +519,9 @@ public class RegistrationFormService {
                 f.getPassDesign(), design, f.getPassLayout(), f.getPassPrefix(), f.getPassTemplateId(), f.getPassTemplateBody(),
                 f.getPassCaption(), f.getContactGroupId(), f.getContactTags(), f.getFollowUps(), f.getRegistrationsCount(),
                 f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt(),
-                packageDtos(f), f.getTermsText(), f.getPrivacyText());
+                packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
+                f.getCtaLabel(), f.getComboTitle(), f.getComboSubtitle(), f.getComboCodes(), f.getComboMrp(), f.getComboPrice(),
+                f.getComboValidUntil());
     }
 
     private List<PackageDto> packageDtos(RegistrationForm f) {
@@ -492,7 +532,8 @@ public class RegistrationFormService {
                 .filter(p -> !p.getCode().startsWith("~"))
                 .map(p -> new PackageDto(p.getId(), p.getCode(), p.getName(), p.getDescription(), p.getDetails(), p.getIcon(),
                         fileRef(p.getImageFileId()), p.getMrp(), p.getSalePrice(), p.isMandatory(), p.isActive(), p.getSortOrder(),
-                        p.getPassTitle(), fileRef(p.getPassDesignFileId()), itemRepository.existsByPackageId(p.getId())))
+                        p.getPassTitle(), fileRef(p.getPassDesignFileId()), itemRepository.existsByPackageId(p.getId()),
+                        p.getImageUrl(), p.isIssuePass(), p.getPassStyle()))
                 .toList();
     }
 

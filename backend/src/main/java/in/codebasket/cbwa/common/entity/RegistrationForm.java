@@ -105,4 +105,18 @@ public class RegistrationForm extends AuditableEntity {
 
     @Column(columnDefinition = "LONGTEXT")
     private String privacyText;
+
+    // booking page look
+    private String heroImageUrl;
+    private String pageHeading;
+    private String pageNote;
+    private String ctaLabel;
+
+    // combo offer: all packages in comboCodes together cost comboPrice (until comboValidUntil)
+    private String comboTitle;
+    private String comboSubtitle;
+    private String comboCodes;
+    private java.math.BigDecimal comboMrp;
+    private java.math.BigDecimal comboPrice;
+    private Instant comboValidUntil;
 }

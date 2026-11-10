@@ -60,17 +60,21 @@ public class BookingService {
     private final AppProperties props;
 
     public record PackageView(Long id, String code, String name, String description, String details, String icon, String imageUrl,
-                              BigDecimal mrp, BigDecimal salePrice, boolean mandatory) {
+                              BigDecimal mrp, BigDecimal salePrice, boolean mandatory, boolean issuePass) {
+    }
+
+    /** Combo offer shown on the page: all these packages together for one price. */
+    public record ComboView(String title, String subtitle, List<String> codes, BigDecimal mrp, BigDecimal price, Instant validUntil) {
     }
 
     public record ItemView(Long id, String name, String passNo, BigDecimal mrp, BigDecimal price, String passUrl, Instant redeemedAt) {
     }
 
     public record BookingView(String bookingNo, String invoiceNo, BigDecimal mrpTotal, BigDecimal total, List<ItemView> items,
-                              String invoiceUrl, String passesPdfUrl) {
+                              String invoiceUrl, String passesPdfUrl, BigDecimal discountAmount, String discountLabel) {
     }
 
-    public record Totals(BigDecimal mrp, BigDecimal total) {
+    public record Totals(BigDecimal mrp, BigDecimal total, BigDecimal discount, String discountLabel) {
     }
 
     public enum VerifyStatus { VALID, ALREADY_REDEEMED, NOT_PAID, INVALID }
@@ -87,8 +91,24 @@ public class BookingService {
 
     public List<PackageView> publicPackages(Long formId) {
         return activePackages(formId).stream().map(p -> new PackageView(p.getId(), p.getCode(), p.getName(), p.getDescription(),
-                p.getDetails(), p.getIcon(), p.getImageFileId() == null ? null : fileUrl(p.getImageFileId()), p.getMrp(), p.getSalePrice(),
-                p.isMandatory())).toList();
+                p.getDetails(), p.getIcon(), p.getImageFileId() != null ? fileUrl(p.getImageFileId()) : p.getImageUrl(), p.getMrp(), p.getSalePrice(),
+                p.isMandatory(), p.isIssuePass())).toList();
+    }
+
+    /** The link's combo offer while it is valid, else null. */
+    public ComboView combo(RegistrationForm f) {
+        List<String> codes = comboCodes(f);
+        if (codes.isEmpty() || f.getComboPrice() == null || (f.getComboValidUntil() != null && f.getComboValidUntil().isBefore(Instant.now()))) {
+            return null;
+        }
+        return new ComboView(f.getComboTitle(), f.getComboSubtitle(), codes, f.getComboMrp(), f.getComboPrice(), f.getComboValidUntil());
+    }
+
+    static List<String> comboCodes(RegistrationForm f) {
+        if (f.getComboCodes() == null || f.getComboCodes().isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(f.getComboCodes().split(",")).map(String::trim).filter(c -> !c.isEmpty()).toList();
     }
 
     /**
@@ -123,7 +143,22 @@ public class BookingService {
             mrp = mrp.add(p.getMrp());
             total = total.add(p.getSalePrice());
         }
-        return new Totals(mrp, total);
+        // Combo offer: when every combo package is chosen, together they cost the combo price.
+        BigDecimal discount = BigDecimal.ZERO;
+        String label = null;
+        ComboView combo = combo(f);
+        if (combo != null) {
+            java.util.Set<String> pickedCodes = picked.stream().map(RegistrationPackage::getCode).collect(Collectors.toSet());
+            if (pickedCodes.containsAll(combo.codes())) {
+                BigDecimal comboSum = picked.stream().filter(p -> combo.codes().contains(p.getCode()))
+                        .map(RegistrationPackage::getSalePrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (comboSum.compareTo(combo.price()) > 0) {
+                    discount = comboSum.subtract(combo.price());
+                    label = "Combo offer: " + (combo.title() == null ? "all passes" : combo.title());
+                }
+            }
+        }
+        return new Totals(mrp, total.subtract(discount), discount, label);
     }
 
     /**
@@ -142,6 +177,9 @@ public class BookingService {
         StoredFile first = null;
         for (RegistrationItem it : items) {
             RegistrationPackage p = pk.get(it.getPackageId());
+            if (p != null && !p.isIssuePass()) {
+                continue; // fee-only line (e.g. registration fee): on the invoice, no pass
+            }
             it.setPassNo(r.getPassNo() + "-" + (p == null ? "P" + it.getPackageId() : p.getCode()));
             itemRepository.saveAndFlush(it); // id + pass id are part of the QR signature
             byte[] jpg = renderItemPass(f, r, it, p, partner);
@@ -158,7 +196,7 @@ public class BookingService {
     private byte[] renderItemPass(RegistrationForm f, Registration r, RegistrationItem it, RegistrationPackage p, Partner partner) {
         String qr = qrUrl(it, r);
         String mobile = RegistrationService.formatMobile(r.getPhone());
-        boolean useFormDesign = p != null && p.isMandatory() && f.isPassEnabled();
+        boolean useFormDesign = p != null && ("FORM_DESIGN".equals(p.getPassStyle()) || (p.isMandatory() && f.isPassEnabled()));
         Long designId = p == null ? null : p.getPassDesignFileId();
         if (designId != null || useFormDesign) {
             PassLayout layout = f.getPassLayout() != null ? f.getPassLayout() : PassLayout.harmainDefault();
@@ -173,7 +211,7 @@ public class BookingService {
             }
         }
         return renderer.renderTicket(new PassRenderer.TicketData(partner.getBusinessName(), f.getTitle(),
-                p != null && p.getPassTitle() != null ? p.getPassTitle() : it.getName() + " Pass", r.getName(), mobile, r.getPassNo(),
+                p != null && p.getPassTitle() != null ? p.getPassTitle() : passTitle(it.getName()), r.getName(), mobile, r.getPassNo(),
                 it.getPassNo(), qr));
     }
 
@@ -189,13 +227,19 @@ public class BookingService {
         List<ItemView> views = new ArrayList<>();
         BigDecimal mrp = BigDecimal.ZERO, total = BigDecimal.ZERO;
         for (RegistrationItem it : items) {
+            if (it.getPassNo() == null && done && it.getPrice().signum() == 0) {
+                continue;
+            }
             views.add(new ItemView(it.getId(), it.getName(), it.getPassNo(), it.getMrp(), it.getPrice(),
                     done && it.getPassFileId() != null ? base + "/passes/" + it.getId() + ".jpg" : null, it.getRedeemedAt()));
             mrp = mrp.add(it.getMrp());
             total = total.add(it.getPrice());
         }
-        return new BookingView(r.getPassNo(), r.getInvoiceNo(), mrp, total, views,
-                done ? base + "/invoice.pdf" : null, done ? base + "/passes.pdf" : null);
+        BigDecimal discount = r.getDiscountAmount() == null ? BigDecimal.ZERO : r.getDiscountAmount();
+        boolean anyPass = views.stream().anyMatch(v -> v.passUrl() != null);
+        return new BookingView(r.getPassNo(), r.getInvoiceNo(), mrp, total.subtract(discount), views,
+                done ? base + "/invoice.pdf" : null, done && anyPass ? base + "/passes.pdf" : null,
+                discount.signum() > 0 ? discount : null, r.getDiscountLabel());
     }
 
     @Transactional(readOnly = true)
@@ -358,12 +402,18 @@ public class BookingService {
     /** Package pictures are public, but only files actually used by a package are served. */
     @Transactional(readOnly = true)
     public Image packageImage(String fileUid) {
-        StoredFile f = fileRepository.findByUid(fileUid).filter(x -> packageRepository.existsByImageFileId(x.getId()))
+        StoredFile f = fileRepository.findByUid(fileUid).filter(x -> packageRepository.existsByImageFileId(x.getId())
+                        || packageRepository.existsByImageUrlContaining(fileUid) || formRepository.existsByHeroImageUrlContaining(fileUid))
                 .orElseThrow(() -> AppException.notFound("Image"));
         return new Image(storage.readBytes(f), f.getMimeType());
     }
 
     private String fileUrl(Long fileId) {
         return fileRepository.findById(fileId).map(f -> "/api/public/package-images/" + f.getUid()).orElse(null);
+    }
+
+    /** "X" -> "X Pass", but a name that already ends in "Pass" stays as it is. */
+    static String passTitle(String name) {
+        return name.toLowerCase(java.util.Locale.ROOT).endsWith("pass") ? name : name + " Pass";
     }
 }

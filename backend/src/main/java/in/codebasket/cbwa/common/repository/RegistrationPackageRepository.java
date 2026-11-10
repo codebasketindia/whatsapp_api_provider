@@ -10,4 +10,6 @@ public interface RegistrationPackageRepository extends JpaRepository<Registratio
     List<RegistrationPackage> findByFormIdAndActiveTrueOrderBySortOrderAscIdAsc(Long formId);
 
     boolean existsByImageFileId(Long imageFileId);
+
+    boolean existsByImageUrlContaining(String part);
 }
