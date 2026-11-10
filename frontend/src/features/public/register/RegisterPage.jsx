@@ -172,10 +172,42 @@ function DetailsSheet({ p, onClose }) {
   );
 }
 
+/** Booking summary after payment: passes, combo discount, registration fee, amount paid. */
+function BookingSummary({ b }) {
+  const all = b?.items || [];
+  const passes = all.filter((it) => it.passNo);
+  const fees = all.filter((it) => !it.passNo);
+  const discount = Number(b.discountAmount || 0);
+  const passTotal = passes.reduce((a, it) => a + Number(it.price || 0), 0) - discount;
+  const money = (v) => (Number(v) > 0 ? rupees(v) : 'FREE');
+  const row = 'flex items-start justify-between gap-3 py-2';
+  return (
+    <section className="bk-card bk-up mt-5 rounded-3xl p-5 text-left">
+      <h2 className="text-lg font-bold text-[#0b4d2c]">Booking summary</h2>
+      <ul className="mt-2 divide-y divide-[#f0e8d6] text-sm text-[#1f2937]">
+        <li className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-[#8a7f6a]">Selected Pass ({passes.length})</li>
+        {passes.map((it) => (
+          <li key={it.id} className={row}><span className="min-w-0 break-words">{it.name}</span><span className="shrink-0 font-semibold">{money(it.price)}</span></li>
+        ))}
+        {discount > 0 && (
+          <li className={`${row} text-[#0b5a33]`}><span className="min-w-0 break-words">Combo Discount</span><span className="shrink-0 font-semibold">− {rupees(discount)}</span></li>
+        )}
+        <li className={`${row} font-semibold`}><span>Passes total</span><span>{money(passTotal)}</span></li>
+        {fees.map((it) => (
+          <li key={it.id} className={row}><span className="min-w-0 break-words">{it.name}</span><span className="shrink-0 font-semibold">{rupees(it.price)}</span></li>
+        ))}
+        <li className="flex items-center justify-between py-2 text-base font-extrabold text-[#0b4d2c]"><span>Total paid</span><span>{money(b.total)}</span></li>
+      </ul>
+    </section>
+  );
+}
+
 function Downloads({ done }) {
   const b = done.booking;
   const items = (b?.items || []).filter((it) => it.passNo);
   return (
+    <>
+    <BookingSummary b={b} />
     <section className="bk-card bk-up mt-5 rounded-3xl p-5 text-left">
       <h2 className="flex items-center gap-2 text-lg font-bold text-[#0b4d2c]"><Download className="h-5 w-5 text-[#a8873d]" aria-hidden /> Your downloads</h2>
       <p className="mt-1 break-words text-sm text-[#6b7280]">Booking no. <b className="text-[#0b4d2c]">{b.bookingNo}</b> · each pass has its own secure QR code, valid once at the entry.</p>
@@ -208,6 +240,7 @@ function Downloads({ done }) {
         )}
       </div>
     </section>
+    </>
   );
 }
 
@@ -341,7 +374,7 @@ export default function RegisterPage() {
             {packages.length > 0 && (
               <p className="text-center text-[13px] text-[#374151]">
                 Selected Pass: <b className="text-[#0b4d2c]">{picked.length}</b> · Total <b className="text-[#0b4d2c]">{price(passTotal)}</b>
-                {totals.comboDiscount > 0 && <> · Combo saving <b className="text-[#0b5a33]">{rupees(totals.comboDiscount)}</b></>}
+                {totals.comboDiscount > 0 && <> · Combo Discount <b className="text-[#0b5a33]">{rupees(totals.comboDiscount)}</b></>}
               </p>
             )}
             <button type="button" onClick={() => setSheet(true)}
@@ -372,7 +405,7 @@ export default function RegisterPage() {
                   </li>
                 ))}
                 {totals.comboDiscount > 0 && (
-                  <li className="flex items-start justify-between gap-3 py-2 text-[#0b5a33]"><span className="min-w-0 break-words">Combo discount</span><span className="shrink-0 font-semibold">− {rupees(totals.comboDiscount)}</span></li>
+                  <li className="flex items-start justify-between gap-3 py-2 text-[#0b5a33]"><span className="min-w-0 break-words">Combo Discount</span><span className="shrink-0 font-semibold">− {rupees(totals.comboDiscount)}</span></li>
                 )}
                 <li className="flex items-center justify-between gap-3 py-2 font-semibold"><span>Passes total</span><span>{price(passTotal)}</span></li>
                 {feeItems.map((p) => (

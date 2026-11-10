@@ -96,7 +96,7 @@ public class BookingDocuments {
         BigDecimal discount = r.getDiscountAmount() == null ? BigDecimal.ZERO : r.getDiscountAmount();
         if (discount.signum() > 0) {
             t.addCell(pad(new Phrase("", normal), false));
-            t.addCell(pad(new Phrase(r.getDiscountLabel() == null ? "Combo offer" : r.getDiscountLabel(), normal), false));
+            t.addCell(pad(new Phrase(r.getDiscountLabel() == null ? "Combo Discount" : r.getDiscountLabel(), normal), false));
             t.addCell(pad(new Phrase("", normal), true));
             t.addCell(pad(new Phrase("- " + rs(discount), normal), true));
             t.addCell(pad(new Phrase("- " + rs(discount), bold), true));

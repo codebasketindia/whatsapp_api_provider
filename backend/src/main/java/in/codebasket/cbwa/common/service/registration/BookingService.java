@@ -154,7 +154,7 @@ public class BookingService {
                         .map(RegistrationPackage::getSalePrice).reduce(BigDecimal.ZERO, BigDecimal::add);
                 if (comboSum.compareTo(combo.price()) > 0) {
                     discount = comboSum.subtract(combo.price());
-                    label = "Combo offer: " + (combo.title() == null ? "all passes" : combo.title());
+                    label = "Combo Discount" + (combo.title() == null ? "" : " (" + combo.title() + ")");
                 }
             }
         }
