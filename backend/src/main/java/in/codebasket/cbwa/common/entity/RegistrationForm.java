@@ -125,4 +125,9 @@ public class RegistrationForm extends AuditableEntity {
 
     /** Small line at the bottom of Ziyarat-card passes, e.g. an emergency number. */
     private String passSupportLine;
+
+    // link preview shown by WhatsApp / Facebook / Telegram when the link is shared
+    private String shareTitle;
+    private String shareDescription;
+    private String shareImageUrl;
 }

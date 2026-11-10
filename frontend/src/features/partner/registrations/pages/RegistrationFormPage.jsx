@@ -21,7 +21,7 @@ const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
   feeAmount: '', feeLabel: '', packages: [], termsText: '', privacyText: '',
-  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '', passSupportLine: '',
+  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '', passSupportLine: '', shareTitle: '', shareDescription: '', shareImageUrl: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -46,6 +46,7 @@ const fromDto = (f) => ({
   comboMrp: f.comboMrp ?? '', comboPrice: f.comboPrice ?? '', comboValidUntil: f.comboValidUntil ? isoToIstLocal(f.comboValidUntil) : '',
   invoiceName: f.invoiceName || '',
   passSupportLine: f.passSupportLine || '',
+  shareTitle: f.shareTitle || '', shareDescription: f.shareDescription || '', shareImageUrl: f.shareImageUrl || '',
 });
 
 function toBody(v) {
@@ -82,6 +83,8 @@ function toBody(v) {
     comboPrice: v.comboPrice === '' ? null : Number(v.comboPrice), comboValidUntil: v.comboValidUntil ? istLocalToIso(v.comboValidUntil) : null,
     invoiceName: v.invoiceName?.trim() || null,
     passSupportLine: v.passSupportLine?.trim() || null,
+    shareTitle: v.shareTitle?.trim() || null, shareDescription: v.shareDescription?.trim() || null,
+    shareImageUrl: v.shareImageUrl?.trim() || null,
   };
 }
 

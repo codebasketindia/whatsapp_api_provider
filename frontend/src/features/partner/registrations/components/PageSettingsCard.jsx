@@ -21,6 +21,10 @@ export default function PageSettingsCard({ v, set, errors = {} }) {
         {f('comboPrice', 'Combo price (₹)', { type: 'number', min: 0 })}
         {f('invoiceName', 'Name on invoices', { maxLength: 160, placeholder: 'Your business name', hint: 'Blank = your business name from the profile.', className: 'md:col-span-2' })}
         {f('passSupportLine', 'Line at the bottom of Ziyarat-card passes', { maxLength: 120, placeholder: 'Emergency Support : +966590550490', className: 'md:col-span-2' })}
+        <p className="md:col-span-2 mt-2 text-sm font-semibold">Link preview (WhatsApp, Facebook, Telegram)</p>
+        {f('shareTitle', 'Preview title', { maxLength: 160, placeholder: 'Har Fard Hajj Umrah' })}
+        {f('shareImageUrl', 'Preview image URL', { maxLength: 500, placeholder: '/ziyarat/share-hajj-2027.jpg', hint: 'Best size 1200 x 630.' })}
+        {f('shareDescription', 'Preview description', { maxLength: 300, placeholder: 'HFHU Vision Private Limited • Ziyarat Passes for Hajj 2027', className: 'md:col-span-2' })}
       </div>
     </Card>
   );

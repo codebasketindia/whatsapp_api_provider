@@ -90,7 +90,8 @@ public class RegistrationFormService {
                           java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt,
                           List<PackageDto> packages, String termsText, String privacyText, String heroImageUrl, String pageHeading,
                           String pageNote, String ctaLabel, String comboTitle, String comboSubtitle, String comboCodes,
-                          java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil, String invoiceName, String passSupportLine) {
+                          java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil, String invoiceName, String passSupportLine, String shareTitle,
+                          String shareDescription, String shareImageUrl) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -111,7 +112,9 @@ public class RegistrationFormService {
                               @Size(max = 60) String ctaLabel, @Size(max = 160) String comboTitle, @Size(max = 200) String comboSubtitle,
                               @Size(max = 200) String comboCodes, @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboMrp,
                               @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboPrice, Instant comboValidUntil,
-                              @Size(max = 160) String invoiceName, @Size(max = 120) String passSupportLine) {
+                              @Size(max = 160) String invoiceName, @Size(max = 120) String passSupportLine,
+                              @Size(max = 160) String shareTitle, @Size(max = 300) String shareDescription,
+                              @Size(max = 500) String shareImageUrl) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -452,6 +455,9 @@ public class RegistrationFormService {
         f.setComboValidUntil(req.comboValidUntil());
         f.setInvoiceName(trimToNull(req.invoiceName()));
         f.setPassSupportLine(trimToNull(req.passSupportLine()));
+        f.setShareTitle(trimToNull(req.shareTitle()));
+        f.setShareDescription(trimToNull(req.shareDescription()));
+        f.setShareImageUrl(safeUrl(req.shareImageUrl(), "shareImageUrl"));
         if (f.getComboCodes() != null && f.getComboPrice() == null) {
             throw AppException.field("comboPrice", "Enter the combo price");
         }
@@ -524,7 +530,8 @@ public class RegistrationFormService {
                 f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt(),
                 packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
                 f.getCtaLabel(), f.getComboTitle(), f.getComboSubtitle(), f.getComboCodes(), f.getComboMrp(), f.getComboPrice(),
-                f.getComboValidUntil(), f.getInvoiceName(), f.getPassSupportLine());
+                f.getComboValidUntil(), f.getInvoiceName(), f.getPassSupportLine(),
+                f.getShareTitle(), f.getShareDescription(), f.getShareImageUrl());
     }
 
     private List<PackageDto> packageDtos(RegistrationForm f) {
