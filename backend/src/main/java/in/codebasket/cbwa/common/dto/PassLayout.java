@@ -4,7 +4,11 @@ package in.codebasket.cbwa.common.dto;
  * Where the name, mobile number and (optional) photo are written on the pass design. Boxes are
  * fractions (0..1) of the design's width/height so the same layout works at any image size.
  */
-public record PassLayout(Box name, Box mobile, Box photo, Box passNo, String textColor, String fontFamily) {
+public record PassLayout(Box name, Box mobile, Box photo, Box passNo, String textColor, String fontFamily, Box qr) {
+
+    public PassLayout(Box name, Box mobile, Box photo, Box passNo, String textColor, String fontFamily) {
+        this(name, mobile, photo, passNo, textColor, fontFamily, null);
+    }
 
     public record Box(double x, double y, double w, double h) {
     }
@@ -18,6 +22,7 @@ public record PassLayout(Box name, Box mobile, Box photo, Box passNo, String tex
                 new Box(536 / W, 1278 / H, 737 / W, 60 / H),
                 new Box(694 / W, 951 / H, 208 / W, 168 / H),
                 null,
-                "#0B5A2E", null);
+                "#0B5A2E", null,
+                new Box(694 / W, 951 / H, 208 / W, 168 / H));
     }
 }

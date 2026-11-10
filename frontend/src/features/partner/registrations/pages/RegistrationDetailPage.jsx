@@ -148,6 +148,15 @@ export default function RegistrationDetailPage() {
                   </span>
                 ),
               }] : []),
+              ...(regs.data?.content?.some((r) => r.booking) ? [{
+                key: 'booking', header: 'Passes', hideOnMobile: false, render: (r) => r.booking ? (
+                  <span className="text-xs">
+                    {r.booking.items.map((it) => (
+                      <span key={it.id} className="block whitespace-nowrap">{it.redeemedAt ? '✓ ' : ''}{it.name}</span>
+                    ))}
+                  </span>
+                ) : '—',
+              }] : []),
               { key: 'createdAt', header: 'Registered', hideOnMobile: true, render: (r) => <DateTime value={r.createdAt} /> },
               { key: 'actions', header: '', align: 'right', render: (r) => (
                 <DropdownMenu
@@ -155,6 +164,8 @@ export default function RegistrationDetailPage() {
                   items={[
                     (r.paymentStatus === 'PENDING' || r.paymentStatus === 'FAILED') && { label: 'Check payment', icon: BadgeIndianRupee, onClick: () => check.mutate(r) },
                     r.passUrl && { label: 'View pass', icon: Image, onClick: () => setViewing(r) },
+                    r.booking?.invoiceUrl && { label: 'Invoice (PDF)', icon: Download, onClick: () => window.open(regApi.publicUrl(r.booking.invoiceUrl), '_blank') },
+                    r.booking?.passesPdfUrl && { label: 'All passes (PDF)', icon: Download, onClick: () => window.open(regApi.publicUrl(r.booking.passesPdfUrl), '_blank') },
                     r.passUrl && { label: 'Send pass again', icon: Send, onClick: () => resend.mutate(r) },
                     r.passNo && { label: 'Create pass again', icon: RefreshCw, onClick: () => regen.mutate(r) },
                   ].filter(Boolean)}

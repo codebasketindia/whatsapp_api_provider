@@ -1,5 +1,7 @@
 package in.codebasket.cbwa.common.service.registration;
 
+import in.codebasket.cbwa.common.entity.RegistrationPackage;
+
 import in.codebasket.cbwa.common.constants.FormStatus;
 import in.codebasket.cbwa.common.dto.FollowUp;
 import in.codebasket.cbwa.common.dto.PassLayout;
@@ -71,6 +73,8 @@ public class RegistrationFormService {
     private final ScheduledMessageService scheduledService;
     private final AppProperties props;
     private final PartnerPaymentService payments;
+    private final in.codebasket.cbwa.common.repository.RegistrationPackageRepository packageRepository;
+    private final in.codebasket.cbwa.common.repository.RegistrationItemRepository itemRepository;
 
     public record SenderRef(Long id, String displayPhoneNumber) {
     }
@@ -83,7 +87,8 @@ public class RegistrationFormService {
                           boolean collectPhoto, boolean passEnabled, String passDesign, FileRef passDesignFile, PassLayout passLayout,
                           String passPrefix, Long passTemplateId, List<String> passTemplateBody, String passCaption,
                           Long contactGroupId, List<String> contactTags, List<FollowUp> followUps, int registrationsCount,
-                          java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt) {
+                          java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt,
+                          List<PackageDto> packages, String termsText, String privacyText) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -97,7 +102,9 @@ public class RegistrationFormService {
                               @Size(max = 20) List<@Valid FollowUp> followUps,
                               @jakarta.validation.constraints.DecimalMin(value = "0") @jakarta.validation.constraints.DecimalMax("500000")
                               @jakarta.validation.constraints.Digits(integer = 6, fraction = 2) java.math.BigDecimal feeAmount,
-                              @Size(max = 120) String feeLabel) {
+                              @Size(max = 120) String feeLabel,
+                              @Size(max = 12) List<@Valid PackageRequest> packages,
+                              @Size(max = 50000) String termsText, @Size(max = 50000) String privacyText) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -105,6 +112,21 @@ public class RegistrationFormService {
     }
 
     public record BroadcastRequest(@NotNull Instant scheduledAt, @NotNull SendMessageRequest message) {
+    }
+
+    public record PackageDto(Long id, String code, String name, String description, String details, String icon, FileRef image,
+                             java.math.BigDecimal mrp, java.math.BigDecimal salePrice, boolean mandatory, boolean active, int sortOrder,
+                             String passTitle, FileRef passDesign, boolean hasBookings) {
+    }
+
+    /** id null = new package. Packages left out of the list are deleted (or switched off when already booked). */
+    public record PackageRequest(Long id,
+                                 @NotBlank @Pattern(regexp = "^[A-Z0-9]{2,12}$", message = "2-12 capital letters or digits") String code,
+                                 @NotBlank @Size(max = 120) String name, @Size(max = 1000) String description,
+                                 @Size(max = 8000) String details, @Size(max = 40) String icon, String imageFileUid,
+                                 @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal mrp,
+                                 @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal salePrice,
+                                 Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid) {
     }
 
     @Transactional(readOnly = true)
@@ -123,14 +145,96 @@ public class RegistrationFormService {
         f.setUid(Ulids.next());
         f.setPartnerId(partnerId);
         apply(partnerId, f, req);
-        return toDto(formRepository.save(f));
+        formRepository.save(f);
+        savePackages(partnerId, f, req.packages());
+        return toDto(f);
     }
 
     @Transactional
     public FormDto update(Long partnerId, Long id, FormRequest req) {
         RegistrationForm f = find(partnerId, id);
         apply(partnerId, f, req);
-        return toDto(formRepository.save(f));
+        formRepository.save(f);
+        savePackages(partnerId, f, req.packages());
+        return toDto(f);
+    }
+
+    private void savePackages(Long partnerId, RegistrationForm f, List<PackageRequest> list) {
+        if (list == null) {
+            return; // older clients: packages unchanged
+        }
+        java.util.Set<String> codes = new java.util.HashSet<>();
+        for (int i = 0; i < list.size(); i++) {
+            PackageRequest p = list.get(i);
+            if (!codes.add(p.code())) {
+                throw AppException.field("packages[" + i + "].code", "Each package needs its own code");
+            }
+            if (p.salePrice().compareTo(p.mrp()) > 0) {
+                throw AppException.field("packages[" + i + "].salePrice", "The sale price cannot be more than the MRP");
+            }
+        }
+        boolean anyPaid = list.stream().anyMatch(p -> p.salePrice().signum() > 0 && (p.active() == null || p.active()));
+        if (anyPaid && !payments.ready(partnerId)) {
+            throw AppException.field("packages", "Connect your Razorpay account first (Registrations → Online payments)");
+        }
+        List<RegistrationPackage> existing = packageRepository.findByFormIdOrderBySortOrderAscIdAsc(f.getId());
+        java.util.Map<Long, RegistrationPackage> byId = new java.util.HashMap<>();
+        existing.forEach(e -> byId.put(e.getId(), e));
+        java.util.Set<Long> kept = new java.util.HashSet<>();
+        // free the codes of packages that are being renamed or removed before saving, so the unique key never clashes
+        for (RegistrationPackage e : existing) {
+            boolean stays = list.stream().anyMatch(p -> e.getId().equals(p.id()));
+            if (!stays || list.stream().noneMatch(p -> e.getId().equals(p.id()) && p.code().equals(e.getCode()))) {
+                e.setCode("~" + e.getId());
+                packageRepository.saveAndFlush(e);
+            }
+        }
+        int order = 1;
+        for (PackageRequest p : list) {
+            RegistrationPackage e = p.id() == null ? null : byId.get(p.id());
+            if (p.id() != null && e == null) {
+                throw AppException.field("packages", "A package was not found. Please reload the page");
+            }
+            if (e == null) {
+                e = new RegistrationPackage();
+                e.setFormId(f.getId());
+                e.setPartnerId(partnerId);
+            }
+            e.setCode(p.code());
+            e.setName(p.name().trim());
+            e.setDescription(trimToNull(p.description()));
+            e.setDetails(trimToNull(p.details()));
+            e.setIcon(trimToNull(p.icon()));
+            e.setImageFileId(ownFile(partnerId, p.imageFileUid(), "packages"));
+            e.setPassDesignFileId(ownFile(partnerId, p.passDesignFileUid(), "packages"));
+            e.setMrp(p.mrp().setScale(2, java.math.RoundingMode.HALF_UP));
+            e.setSalePrice(p.salePrice().setScale(2, java.math.RoundingMode.HALF_UP));
+            e.setMandatory(Boolean.TRUE.equals(p.mandatory()));
+            e.setActive(p.active() == null || p.active());
+            e.setSortOrder(p.sortOrder() == null ? order : p.sortOrder());
+            e.setPassTitle(trimToNull(p.passTitle()));
+            kept.add(packageRepository.saveAndFlush(e).getId());
+            order++;
+        }
+        for (RegistrationPackage e : existing) {
+            if (!kept.contains(e.getId())) {
+                if (itemRepository.existsByPackageId(e.getId())) {
+                    e.setActive(false); // already booked: keep for history, hide from the page
+                    e.setCode("~X" + e.getId());
+                    packageRepository.save(e);
+                } else {
+                    packageRepository.delete(e);
+                }
+            }
+        }
+    }
+
+    private Long ownFile(Long partnerId, String uid, String field) {
+        if (uid == null || uid.isBlank()) {
+            return null;
+        }
+        return fileRepository.findByUid(uid).filter(x -> partnerId.equals(x.getPartnerId())).map(StoredFile::getId)
+                .orElseThrow(() -> AppException.field(field, "Uploaded image not found"));
     }
 
     @Transactional
@@ -304,6 +408,12 @@ public class RegistrationFormService {
             f.setFeeAmount(null);
         }
         f.setFeeLabel(trimToNull(req.feeLabel()));
+        if (req.termsText() != null) {
+            f.setTermsText(trimToNull(req.termsText()));
+        }
+        if (req.privacyText() != null) {
+            f.setPrivacyText(trimToNull(req.privacyText()));
+        }
     }
 
     /** Builds the message for a sample recipient so template/variable/media mistakes show up while saving. */
@@ -370,7 +480,24 @@ public class RegistrationFormService {
                 f.getMaxRegistrations(), f.getConsentText(), f.getSuccessMessage(), f.isCollectPhoto(), f.isPassEnabled(),
                 f.getPassDesign(), design, f.getPassLayout(), f.getPassPrefix(), f.getPassTemplateId(), f.getPassTemplateBody(),
                 f.getPassCaption(), f.getContactGroupId(), f.getContactTags(), f.getFollowUps(), f.getRegistrationsCount(),
-                f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt());
+                f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt(),
+                packageDtos(f), f.getTermsText(), f.getPrivacyText());
+    }
+
+    private List<PackageDto> packageDtos(RegistrationForm f) {
+        if (f.getId() == null) {
+            return List.of();
+        }
+        return packageRepository.findByFormIdOrderBySortOrderAscIdAsc(f.getId()).stream()
+                .filter(p -> !p.getCode().startsWith("~"))
+                .map(p -> new PackageDto(p.getId(), p.getCode(), p.getName(), p.getDescription(), p.getDetails(), p.getIcon(),
+                        fileRef(p.getImageFileId()), p.getMrp(), p.getSalePrice(), p.isMandatory(), p.isActive(), p.getSortOrder(),
+                        p.getPassTitle(), fileRef(p.getPassDesignFileId()), itemRepository.existsByPackageId(p.getId())))
+                .toList();
+    }
+
+    private FileRef fileRef(Long id) {
+        return id == null ? null : fileRepository.findById(id).map(x -> new FileRef(x.getUid(), "/api/files/" + x.getUid())).orElse(null);
     }
 
     String publicUrl(String slug) {

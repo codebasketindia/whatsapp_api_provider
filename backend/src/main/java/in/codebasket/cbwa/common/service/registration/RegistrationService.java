@@ -55,6 +55,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -97,6 +98,7 @@ public class RegistrationService {
     private final OutboundMessageService outbound;
     private final in.codebasket.cbwa.common.service.scheduling.ScheduledMessageService scheduledService;
     private final PartnerPaymentService payments;
+    private final BookingService booking;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
@@ -109,8 +111,9 @@ public class RegistrationService {
                                MessageRepository messageRepository, OutboundMessageService outbound,
                                in.codebasket.cbwa.common.service.scheduling.ScheduledMessageService scheduledService,
                                ApplicationEventPublisher events, JdbcTemplate jdbc, PlatformTransactionManager txManager,
-                               PartnerPaymentService payments) {
+                               PartnerPaymentService payments, BookingService booking) {
         this.payments = payments;
+        this.booking = booking;
         this.formRepository = formRepository;
         this.repository = repository;
         this.formService = formService;
@@ -132,18 +135,23 @@ public class RegistrationService {
 
     public record PublicFormDto(String slug, String title, String description, String businessName, String consentText,
                                 boolean collectPhoto, boolean passEnabled, boolean open, String closedReason,
-                                java.math.BigDecimal feeAmount, String feeLabel) {
+                                java.math.BigDecimal feeAmount, String feeLabel, List<BookingService.PackageView> packages,
+                                boolean hasTerms, boolean hasPrivacy) {
+    }
+
+    public record LegalDto(String formTitle, String businessName, String title, String text) {
     }
 
     public record RegisterResult(String uid, String name, String passNo, String passUrl, PassStatus passStatus,
                                  String whatsappLink, String successMessage, PaymentStatus paymentStatus,
-                                 java.math.BigDecimal amount, PartnerPaymentService.Checkout payment, String mobile) {
+                                 java.math.BigDecimal amount, PartnerPaymentService.Checkout payment, String mobile,
+                                 BookingService.BookingView booking) {
     }
 
     public record RegistrationDto(String uid, Long formId, String formTitle, String passNo, String name, String phone,
                                   PassStatus passStatus, String passError, String passUrl, String photoUrl, String messageUid,
                                   Long contactId, PaymentStatus paymentStatus, java.math.BigDecimal amount, String paymentId,
-                                  String paymentMethod, Instant paidAt, Instant createdAt) {
+                                  String paymentMethod, Instant paidAt, Instant createdAt, BookingService.BookingView booking) {
     }
 
     // ---------------------------------------------------------------- public
@@ -156,8 +164,23 @@ public class RegistrationService {
         if (closed == null && paid(f) && !payments.ready(f.getPartnerId())) {
             closed = "Online payment is not available for this registration right now";
         }
+        List<BookingService.PackageView> packages = booking.publicPackages(f.getId());
         return new PublicFormDto(f.getSlug(), f.getTitle(), f.getDescription(), p.getBusinessName(), f.getConsentText(),
-                f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed, paid(f) ? f.getFeeAmount() : null, f.getFeeLabel());
+                f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed,
+                packages.isEmpty() && paid(f) ? f.getFeeAmount() : null, f.getFeeLabel(), packages,
+                f.getTermsText() != null && !f.getTermsText().isBlank(), f.getPrivacyText() != null && !f.getPrivacyText().isBlank());
+    }
+
+    /** PR5: terms or privacy text of a link, shown on its own page. */
+    @Transactional(readOnly = true)
+    public LegalDto legal(String slug, String kind) {
+        RegistrationForm f = formRepository.findBySlug(slug).orElseThrow(() -> AppException.notFound("Registration link"));
+        String text = "privacy".equals(kind) ? f.getPrivacyText() : "terms".equals(kind) ? f.getTermsText() : null;
+        if (text == null || text.isBlank()) {
+            throw AppException.notFound("Page");
+        }
+        String business = partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(null);
+        return new LegalDto(f.getTitle(), business, "privacy".equals(kind) ? "Privacy Policy" : "Terms & Conditions", text);
     }
 
     /**
@@ -167,7 +190,12 @@ public class RegistrationService {
      */
     public RegisterResult register(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
                                    String ip, String userAgent) {
-        RegisterResult prepared = tx.execute(s -> prepare(slug, rawName, rawMobile, consent, photo, ip, userAgent));
+        return register(slug, rawName, rawMobile, consent, photo, ip, userAgent, null);
+    }
+
+    public RegisterResult register(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
+                                   String ip, String userAgent, List<Long> packageIds) {
+        RegisterResult prepared = tx.execute(s -> prepare(slug, rawName, rawMobile, consent, photo, ip, userAgent, packageIds));
         if (prepared.paymentStatus() != PaymentStatus.PENDING) {
             return prepared;
         }
@@ -183,11 +211,11 @@ public class RegistrationService {
                 f.getFeeLabel() != null ? f.getFeeLabel() : f.getTitle());
         tx.executeWithoutResult(s -> repository.findById(r.getId()).ifPresent(x -> x.setRazorpayOrderId(checkout.orderId())));
         return new RegisterResult(prepared.uid(), prepared.name(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
-                PaymentStatus.PENDING, r.getAmount(), checkout, "+" + r.getPhone());
+                PaymentStatus.PENDING, r.getAmount(), checkout, "+" + r.getPhone(), prepared.booking());
     }
 
     private RegisterResult prepare(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
-                                   String ip, String userAgent) {
+                                   String ip, String userAgent, List<Long> packageIds) {
         RegistrationForm found = formRepository.findBySlug(slug).orElseThrow(() -> AppException.notFound("Registration link"));
         String name = rawName == null ? "" : rawName.trim().replaceAll("\\s+", " ");
         if (name.length() < 2 || name.length() > 80) {
@@ -205,7 +233,8 @@ public class RegistrationService {
         RegistrationForm f = formRepository.lockById(found.getId()).orElseThrow();
         Partner partner = partnerRepository.findById(f.getPartnerId()).orElseThrow();
         String closed = closedReason(f, partner);
-        if (closed == null && paid(f) && !payments.ready(f.getPartnerId())) {
+        boolean withPackages = !booking.activePackages(f.getId()).isEmpty();
+        if (closed == null && (withPackages ? packagesCost(f) : paid(f)) && !payments.ready(f.getPartnerId())) {
             closed = "Online payment is not available for this registration right now";
         }
         if (closed != null) {
@@ -236,10 +265,23 @@ public class RegistrationService {
             StoredFile pf = storage.store(photo, FileCategory.PROFILE_PHOTO, f.getPartnerId(), PHOTO_TYPES, 5L << 20);
             r.setPhotoFileId(pf.getId());
         }
-        if (paid(f)) {
+        BookingService.Totals totals = null;
+        if (withPackages) {
+            if (r.getPassStatus() == null) {
+                r.setPassStatus(PassStatus.AWAITING_PAYMENT);
+            }
+            try {
+                repository.saveAndFlush(r);
+            } catch (DataIntegrityViolationException e) {
+                throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered");
+            }
+            totals = booking.selectItems(f, r, packageIds);
+            r.setMrpTotal(totals.mrp());
+        }
+        if (withPackages ? totals.total().signum() > 0 : paid(f)) {
             r.setPaymentStatus(PaymentStatus.PENDING);
             r.setPassStatus(PassStatus.AWAITING_PAYMENT);
-            r.setAmount(f.getFeeAmount());
+            r.setAmount(withPackages ? totals.total() : f.getFeeAmount());
             r.setRazorpayOrderId(null);
             try {
                 repository.saveAndFlush(r);
@@ -247,7 +289,10 @@ public class RegistrationService {
                 throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered");
             }
             return new RegisterResult(r.getUid(), r.getName(), null, null, r.getPassStatus(), null, f.getSuccessMessage(),
-                    PaymentStatus.PENDING, r.getAmount(), null, "+" + phone);
+                    PaymentStatus.PENDING, r.getAmount(), null, "+" + phone, booking.view(r));
+        }
+        if (withPackages) {
+            r.setAmount(BigDecimal.ZERO);
         }
         r.setPaymentStatus(PaymentStatus.NOT_REQUIRED);
         r.setPassStatus(f.isPassEnabled() ? PassStatus.PENDING : PassStatus.DISABLED);
@@ -269,7 +314,11 @@ public class RegistrationService {
         r.setContactId(upsertContact(f, r.getName(), r.getPhone()));
         // Registering with consent is an explicit opt-in.
         optOutRepository.findByPartnerIdAndPhone(f.getPartnerId(), r.getPhone()).ifPresent(optOutRepository::delete);
-        if (f.isPassEnabled()) {
+        StoredFile bookingPass = booking.completeItems(f, r);
+        if (bookingPass != null) {
+            r.setPassFileId(bookingPass.getId()); // the first (mandatory) package pass is also sent on WhatsApp
+            r.setPassStatus(PassStatus.PENDING);
+        } else if (f.isPassEnabled()) {
             r.setPassFileId(renderPass(f, r).getId());
             r.setPassStatus(PassStatus.PENDING);
         } else {
@@ -290,7 +339,7 @@ public class RegistrationService {
                 !done || sender == null || sender.getWaNumber() == null ? null
                         : "https://wa.me/" + sender.getWaNumber() + "?text=" + java.net.URLEncoder.encode(
                         "Hi, please send my pass. PASS-" + r.getClaimCode(), java.nio.charset.StandardCharsets.UTF_8),
-                f.getSuccessMessage(), r.getPaymentStatus(), r.getAmount(), null, "+" + r.getPhone());
+                f.getSuccessMessage(), r.getPaymentStatus(), r.getAmount(), null, "+" + r.getPhone(), booking.view(r));
     }
 
     /**
@@ -392,6 +441,11 @@ public class RegistrationService {
         }
         checkPayment(r);
         return tx.execute(s -> dto(repository.findById(r.getId()).orElseThrow()));
+    }
+
+    /** A link with packages costs money when any active package has a price. */
+    private boolean packagesCost(RegistrationForm f) {
+        return booking.activePackages(f.getId()).stream().anyMatch(p -> p.getSalePrice().signum() > 0);
     }
 
     private static boolean paid(RegistrationForm f) {
@@ -545,7 +599,7 @@ public class RegistrationService {
         return PageResponse.of(result, r -> new RegistrationDto(r.getUid(), r.getFormId(), titles.get(r.getFormId()), r.getPassNo(),
                 r.getName(), r.getPhone(), r.getPassStatus(), r.getPassError(), r.getPassFileId() == null ? null : passUrl(r),
                 photos.get(r.getPhotoFileId()), messageUids.get(r.getPassMessageId()), r.getContactId(), r.getPaymentStatus(), r.getAmount(),
-                r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt()));
+                r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt(), booking.view(r)));
     }
 
     private RegistrationDto dto(Registration r) {
@@ -554,7 +608,7 @@ public class RegistrationService {
         String photo = r.getPhotoFileId() == null ? null : fileRepository.findById(r.getPhotoFileId()).map(x -> "/api/files/" + x.getUid()).orElse(null);
         return new RegistrationDto(r.getUid(), r.getFormId(), title, r.getPassNo(), r.getName(), r.getPhone(), r.getPassStatus(),
                 r.getPassError(), r.getPassFileId() == null ? null : passUrl(r), photo, messageUid, r.getContactId(), r.getPaymentStatus(),
-                r.getAmount(), r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt());
+                r.getAmount(), r.getRazorpayPaymentId(), r.getPaymentMethod(), r.getPaidAt(), r.getCreatedAt(), booking.view(r));
     }
 
     /** RG2: send the pass again (e.g. after it failed or the template was approved later). */

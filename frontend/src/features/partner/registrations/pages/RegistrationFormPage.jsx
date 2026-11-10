@@ -13,12 +13,13 @@ import { istLocalToIso } from '../../campaigns/components/schedule';
 import { isoToIstLocal } from '../../scheduled/components/scheduleTime';
 import PassDesignCard from '../components/PassDesignCard';
 import FollowUpsCard from '../components/FollowUpsCard';
+import PackagesCard, { formToPackage, packageToForm } from '../components/PackagesCard';
 import { HARMAIN_LAYOUT, slugify } from '../components/regHelpers';
 
 const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
-  feeAmount: '', feeLabel: '',
+  feeAmount: '', feeLabel: '', packages: [], termsText: '', privacyText: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -35,6 +36,9 @@ const fromDto = (f) => ({
   passCaption: f.passCaption || '',
   feeAmount: f.feeAmount ?? '',
   feeLabel: f.feeLabel || '',
+  packages: (f.packages || []).map(packageToForm),
+  termsText: f.termsText || '',
+  privacyText: f.privacyText || '',
 });
 
 function toBody(v) {
@@ -62,6 +66,9 @@ function toBody(v) {
     followUps: v.followUps,
     feeAmount: v.feeAmount === '' ? null : Number(v.feeAmount),
     feeLabel: v.feeLabel?.trim() || null,
+    packages: v.packages.map(formToPackage),
+    termsText: v.termsText ?? '',
+    privacyText: v.privacyText ?? '',
   };
 }
 
@@ -120,7 +127,9 @@ function Editor({ initial, id }) {
                   description="The photo is printed in the photo box of the pass." />
         </div>
       </Card>
-      <Card title="Registration fee" subtitle="Leave empty for a free registration. With a fee, the pass is created and sent only after payment.">
+      <PackagesCard value={v.packages} onChange={(packages) => set({ packages })} termsText={v.termsText} privacyText={v.privacyText}
+                    onLegal={set} errors={errors} />
+      <Card title="Registration fee" subtitle={v.packages.length ? 'Not used: this link charges by its packages above.' : 'Leave empty for a free registration. With a fee, the pass is created and sent only after payment.'}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input type="number" min={1} step="0.01" label="Fee (₹)" value={v.feeAmount} error={errors.feeAmount}
                  placeholder="Free" onChange={(e) => set({ feeAmount: e.target.value })}

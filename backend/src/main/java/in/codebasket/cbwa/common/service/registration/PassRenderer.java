@@ -61,7 +61,16 @@ public class PassRenderer {
         }
     }
 
-    public record PassData(String name, String mobile, String passNo, byte[] photo) {
+    /** qrText: content of the QR code (a verification link); null = no QR. */
+    public record PassData(String name, String mobile, String passNo, byte[] photo, String qrText) {
+        public PassData(String name, String mobile, String passNo, byte[] photo) {
+            this(name, mobile, passNo, photo, null);
+        }
+    }
+
+    /** What a generated (design-less) ticket shows. */
+    public record TicketData(String businessName, String eventTitle, String passTitle, String name, String mobile,
+                             String bookingNo, String passNo, String qrText) {
     }
 
     public byte[] render(byte[] design, PassLayout layout, PassData data) {
@@ -77,8 +86,18 @@ public class PassRenderer {
             Color color = color(layout.textColor());
             int w = img.getWidth();
             int h = img.getHeight();
-            if (data.photo() != null && layout.photo() != null) {
+            boolean qrInPhotoBox = data.qrText() != null && layout.qr() != null && layout.qr().equals(layout.photo());
+            if (data.photo() != null && layout.photo() != null && !qrInPhotoBox) {
                 drawPhoto(g, data.photo(), layout.photo(), w, h);
+            }
+            if (data.qrText() != null && layout.qr() != null) {
+                PassLayout.Box b = layout.qr();
+                int bx = (int) Math.round(b.x() * w), by = (int) Math.round(b.y() * h);
+                int bw = (int) Math.round(b.w() * w), bh = (int) Math.round(b.h() * h);
+                int side = Math.min(bw, bh);
+                g.setColor(Color.WHITE);
+                g.fillRect(bx, by, bw, bh);
+                g.drawImage(qr(data.qrText(), side), bx + (bw - side) / 2, by + (bh - side) / 2, null);
             }
             text(g, data.name(), layout.name(), w, h, color);
             text(g, data.mobile(), layout.mobile(), w, h, color);
@@ -165,6 +184,81 @@ public class PassRenderer {
             return img;
         } catch (IOException | RuntimeException e) {
             throw e instanceof IllegalArgumentException iae ? iae : new IllegalArgumentException("Image could not be read", e);
+        }
+    }
+
+    /** A clean ticket for packages without their own design: header, details, QR. 1600 x 900 px. */
+    public byte[] renderTicket(TicketData t) {
+        int w = 1600, h = 900;
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            Color navy = new Color(0x1E2A44), gold = new Color(0xC9A24B), ivory = new Color(0xFBF8F1), ink = new Color(0x1F2937);
+            g.setColor(ivory);
+            g.fillRect(0, 0, w, h);
+            g.setColor(navy);
+            g.fillRect(0, 0, w, 210);
+            g.setColor(gold);
+            g.fillRect(0, 210, w, 8);
+            g.setColor(new Color(0xE9DFC6));
+            g.fillRoundRect(40, 250, w - 80, h - 290, 36, 36);
+            g.setColor(Color.WHITE);
+            g.fillRoundRect(44, 254, w - 88, h - 298, 32, 32);
+            g.setColor(gold);
+            g.setFont(fontFor(nz(t.businessName())).deriveFont(30f));
+            g.drawString(nz(t.businessName()).toUpperCase(), 70, 70);
+            g.setColor(Color.WHITE);
+            fit(g, nz(t.passTitle()), 70, 150, 1020, 64f);
+            g.setColor(new Color(0xD7DCE6));
+            g.setFont(fontFor(nz(t.eventTitle())).deriveFont(28f));
+            g.drawString(nz(t.eventTitle()), 70, 192);
+            int y = 330;
+            for (String[] row : new String[][] {{"Name", t.name()}, {"Mobile", t.mobile()}, {"Booking no.", t.bookingNo()}, {"Pass ID", t.passNo()}}) {
+                g.setColor(new Color(0x6B7280));
+                g.setFont(fontFor(row[0]).deriveFont(26f));
+                g.drawString(row[0], 90, y);
+                g.setColor(ink);
+                fit(g, nz(row[1]), 90, y + 48, 900, 42f);
+                y += 125;
+            }
+            int side = 470;
+            g.drawImage(qr(t.qrText(), side), w - side - 90, 300, null);
+            g.setColor(new Color(0x6B7280));
+            g.setFont(baseFont.deriveFont(24f));
+            String hint = "Show this QR code at the entry. Valid once.";
+            g.drawString(hint, w - side - 90 + (side - g.getFontMetrics().stringWidth(hint)) / 2, 300 + side + 45);
+        } finally {
+            g.dispose();
+        }
+        return jpeg(img);
+    }
+
+    private void fit(Graphics2D g, String text, int x, int y, int maxW, float size) {
+        Font f = fontFor(text).deriveFont(size);
+        while (g.getFontMetrics(f).stringWidth(text) > maxW && size > 14) {
+            size -= 2;
+            f = f.deriveFont(size);
+        }
+        g.setFont(f);
+        g.drawString(text, x, y);
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
+    /** QR code with high error correction, black on white. */
+    static BufferedImage qr(String text, int size) {
+        try {
+            var hints = new java.util.EnumMap<com.google.zxing.EncodeHintType, Object>(com.google.zxing.EncodeHintType.class);
+            hints.put(com.google.zxing.EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.Q);
+            hints.put(com.google.zxing.EncodeHintType.MARGIN, 1);
+            var matrix = new com.google.zxing.qrcode.QRCodeWriter().encode(text, com.google.zxing.BarcodeFormat.QR_CODE, size, size, hints);
+            return com.google.zxing.client.j2se.MatrixToImageWriter.toBufferedImage(matrix);
+        } catch (com.google.zxing.WriterException e) {
+            throw new IllegalStateException("QR code could not be created", e);
         }
     }
 

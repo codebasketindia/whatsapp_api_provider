@@ -99,4 +99,10 @@ public class RegistrationForm extends AuditableEntity {
     private java.math.BigDecimal feeAmount;
 
     private String feeLabel;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String termsText;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String privacyText;
 }

@@ -7,6 +7,7 @@ import in.codebasket.cbwa.common.entity.Registration;
 import in.codebasket.cbwa.common.service.registration.PartnerPaymentService;
 import in.codebasket.cbwa.common.service.registration.RegistrationFormService;
 import in.codebasket.cbwa.common.service.registration.RegistrationService;
+import in.codebasket.cbwa.common.service.registration.BookingService;
 
 import in.codebasket.cbwa.security.LoginRateLimiter;
 import in.codebasket.cbwa.security.SecurityUtils;
@@ -56,6 +57,7 @@ public class RegistrationController {
     private final RegistrationService service;
     private final LoginRateLimiter rateLimiter;
     private final PartnerPaymentService payments;
+    private final BookingService booking;
 
     public record VerifyRequest(@jakarta.validation.constraints.NotBlank String registrationUid,
                                 @jakarta.validation.constraints.NotBlank String razorpayOrderId,
@@ -186,13 +188,14 @@ public class RegistrationController {
                                                 @RequestParam(required = false) Boolean consent,
                                                 @RequestParam(required = false) MultipartFile photo,
                                                 @RequestParam(required = false) String website,
+                                                @RequestParam(required = false) java.util.List<Long> packageIds,
                                                 HttpServletRequest request) {
         String ip = ClientIp.of(request);
         rateLimiter.check("register", ip);
         if (website != null && !website.isBlank()) {
             throw AppException.badRequest("Request rejected"); // honeypot field filled in by bots
         }
-        return ApiResponse.created(service.register(slug, name, mobile, consent, photo, ip, request.getHeader(HttpHeaders.USER_AGENT)),
+        return ApiResponse.created(service.register(slug, name, mobile, consent, photo, ip, request.getHeader(HttpHeaders.USER_AGENT), packageIds),
                 "Registered");
     }
 
@@ -201,6 +204,67 @@ public class RegistrationController {
         rateLimiter.check("register-verify", ClientIp.of(request));
         return ApiResponse.ok(service.verifyPayment(slug, req.registrationUid(), req.razorpayOrderId(), req.razorpayPaymentId(),
                 req.razorpaySignature()), "Payment received");
+    }
+
+    @GetMapping("/api/public/register/{slug}/legal/{kind}")
+    public ApiResponse<RegistrationService.LegalDto> legal(@PathVariable String slug, @PathVariable String kind) {
+        return ApiResponse.ok(service.legal(slug, kind));
+    }
+
+    // ---------------------------------------------------------------- bookings: downloads (unguessable booking id) and QR checks
+
+    @GetMapping(value = "/api/public/bookings/{uid}/passes/{itemId}.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> bookingPass(@PathVariable String uid, @PathVariable Long itemId,
+                                              @RequestParam(defaultValue = "false") boolean download) {
+        return file(booking.itemPass(uid, itemId), MediaType.IMAGE_JPEG, "pass-" + itemId + ".jpg", download);
+    }
+
+    @GetMapping(value = "/api/public/bookings/{uid}/invoice.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> invoice(@PathVariable String uid, @RequestParam(defaultValue = "true") boolean download) {
+        return file(booking.invoicePdf(uid), MediaType.APPLICATION_PDF, "invoice.pdf", download);
+    }
+
+    @GetMapping(value = "/api/public/bookings/{uid}/passes.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> passesPdf(@PathVariable String uid, @RequestParam(defaultValue = "true") boolean download) {
+        return file(booking.passesPdf(uid), MediaType.APPLICATION_PDF, "passes.pdf", download);
+    }
+
+    @GetMapping("/api/public/package-images/{fileUid}")
+    public ResponseEntity<byte[]> packageImage(@PathVariable String fileUid) {
+        var img = booking.packageImage(fileUid);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(img.mimeType()))
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic()).header("X-Content-Type-Options", "nosniff").body(img.bytes());
+    }
+
+    /** PV1: anyone scanning the QR sees whether it is valid (name masked); nothing is redeemed. */
+    @GetMapping("/api/public/passes/check")
+    public ApiResponse<BookingService.VerifyResult> check(@RequestParam String token, HttpServletRequest request) {
+        rateLimiter.check("pass-check", ClientIp.of(request));
+        return ApiResponse.ok(booking.check(token));
+    }
+
+    public record TokenRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 300) String token) {
+    }
+
+    /** PV2: partner scanner - full details of the partner's own pass. */
+    @PostMapping("/api/partner/passes/verify")
+    public ApiResponse<BookingService.VerifyResult> verify(@Valid @RequestBody TokenRequest req) {
+        return ApiResponse.ok(booking.verify(req.token(), SecurityUtils.currentPartnerId()));
+    }
+
+    /** PV3: marks the pass used; a second scan answers ALREADY_REDEEMED. */
+    @PostMapping("/api/partner/passes/redeem")
+    public ApiResponse<BookingService.VerifyResult> redeem(@Valid @RequestBody TokenRequest req) {
+        BookingService.VerifyResult r = booking.redeem(req.token(), SecurityUtils.currentPartnerId(), SecurityUtils.currentUserIdOrNull());
+        return ApiResponse.ok(r, r.message());
+    }
+
+    private static ResponseEntity<byte[]> file(byte[] body, MediaType type, String name, boolean download) {
+        return ResponseEntity.ok().contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, (download ? "attachment" : "inline") + "; filename=\"" + name + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .cacheControl(CacheControl.maxAge(10, TimeUnit.MINUTES).cachePrivate())
+                .body(body);
     }
 
     @GetMapping(value = "/api/public/passes/{uid}.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
