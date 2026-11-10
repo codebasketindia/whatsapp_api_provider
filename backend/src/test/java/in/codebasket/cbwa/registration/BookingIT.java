@@ -201,6 +201,57 @@ class BookingIT extends AbstractIntegrationTest {
         register("Imran Shaikh", "9811122233", pk.get(1).path("id").asText()).andExpect(jsonPath("$.data.amount").value("49.00"));
     }
 
+    @Test
+    void paymentCannotBeCheated() throws Exception {
+        String form = send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/partner/registration-forms"), """
+                {"title":"Ziyarat Passes for HAJJ 2027","slug":"ziyarat-2027","senderId":%d,"passPrefix":"HZ",
+                 "comboTitle":"Teeno Paid Pass","comboCodes":"SMM,AMM,ACZ","comboPrice":9000,
+                 "packages":[
+                   {"code":"REG","name":"Registration / Person","mrp":49,"salePrice":49,"mandatory":true,"issuePass":false},
+                   {"code":"HZS","name":"Haramain Ziyarat Show Pass","mrp":0,"salePrice":0},
+                   {"code":"SMM","name":"Khaas","mrp":6000,"salePrice":3000},
+                   {"code":"AMM","name":"Mazeed","mrp":6000,"salePrice":3000},
+                   {"code":"ACZ","name":"Taif","mrp":8000,"salePrice":4000}]}""".formatted(sender.getId()))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        var pk = TestData.json(form).path("data").path("packages");
+        String free = pk.get(1).path("id").asText();
+        String all = free + "," + pk.get(2).path("id").asText() + "," + pk.get(3).path("id").asText() + "," + pk.get(4).path("id").asText();
+
+        // 1) Prices come from the server only: amount / price fields sent by the browser are ignored.
+        testData.resetCaches();
+        mockMvc.perform(multipart("/api/public/register/ziyarat-2027").param("name", "Tamper Test").param("mobile", "9800000001")
+                        .param("consent", "true").param("packageIds", all).param("amount", "1").param("total", "1")
+                        .param("salePrice", "0").param("comboPrice", "1"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.amount").value("9049.00"))
+                .andExpect(jsonPath("$.data.payment.amount").value(904900));
+        // 2) A package id that is not on this link is refused.
+        register("Tamper Test", "9800000002", "999999").andExpect(status().isBadRequest());
+
+        // 3) Cheap order first, then the same number picks every pass: the cheap order can no longer pay for them.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_S1\",\"status\":\"created\"}")));
+        String cheap = register("Cheat Test", "9800000003", free).andExpect(jsonPath("$.data.amount").value("49.00"))
+                .andReturn().getResponse().getContentAsString();
+        String uid = TestData.json(cheap).path("data").path("uid").asText();
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_S2\",\"status\":\"created\"}")));
+        register("Cheat Test", "9800000003", all).andExpect(jsonPath("$.data.amount").value("9049.00"));
+        verify(uid, "order_S1", "pay_S1", sign("order_S1|pay_S1")).andExpect(status().is4xxClientError());
+        assertThat(registrationRepository.findByUid(uid).orElseThrow().getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+
+        // 4) Razorpay says only Rs 49 was paid on the Rs 9,049 order: refused. The full amount: accepted.
+        RZP.stubFor(get(urlEqualTo("/v1/orders/order_S2/payments")).willReturn(json("""
+                {"items":[{"id":"pay_S2","order_id":"order_S2","amount":4900,"currency":"INR","status":"captured"}]}""")));
+        verify(uid, "order_S2", "pay_S2", sign("order_S2|pay_S2")).andExpect(status().is4xxClientError());
+        assertThat(registrationRepository.findByUid(uid).orElseThrow().getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        RZP.stubFor(get(urlEqualTo("/v1/orders/order_S2/payments")).willReturn(json("""
+                {"items":[{"id":"pay_S3","order_id":"order_S2","amount":904900,"currency":"INR","status":"captured"}]}""")));
+        verify(uid, "order_S2", "pay_S3", sign("order_S2|pay_S3")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.booking.total").value("9049.00"));
+        // 5) A forged signature never pays.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_S4\",\"status\":\"created\"}")));
+        String other = register("Forge Test", "9800000004", all).andReturn().getResponse().getContentAsString();
+        verify(TestData.json(other).path("data").path("uid").asText(), "order_S4", "pay_S4", "deadbeef").andExpect(status().is4xxClientError());
+    }
+
     private ResultActions register(String name, String mobile, String packageIds) throws Exception {
         testData.resetCaches();
         return mockMvc.perform(multipart("/api/public/register/ziyarat-2027").param("name", name).param("mobile", mobile)

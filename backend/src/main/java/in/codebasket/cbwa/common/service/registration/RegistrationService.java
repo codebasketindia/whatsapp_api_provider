@@ -211,7 +211,18 @@ public class RegistrationService {
         PartnerPaymentService.Checkout checkout = payments.createOrder(f.getPartnerId(), paise, "REG-" + r.getUid().substring(14), notes,
                 partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(f.getTitle()),
                 f.getFeeLabel() != null ? f.getFeeLabel() : f.getTitle());
-        tx.executeWithoutResult(s -> repository.findById(r.getId()).ifPresent(x -> x.setRazorpayOrderId(checkout.orderId())));
+        // Attach the order only while the registration still costs exactly this order's amount and has no other
+        // order: a parallel attempt that changed the passes in between must not get this (cheaper) order.
+        Boolean attached = tx.execute(s -> repository.lockById(r.getId())
+                .filter(x -> x.getPaymentStatus() == PaymentStatus.PENDING && x.getRazorpayOrderId() == null
+                        && x.getAmount() != null && x.getAmount().movePointRight(2).longValueExact() == paise)
+                .map(x -> {
+                    x.setRazorpayOrderId(checkout.orderId());
+                    return true;
+                }).orElse(false));
+        if (!Boolean.TRUE.equals(attached)) {
+            throw new AppException(ErrorCode.CONFLICT, "Your selection changed while we were preparing the payment. Please tap Pay again");
+        }
         return new RegisterResult(prepared.uid(), prepared.name(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
                 PaymentStatus.PENDING, r.getAmount(), checkout, "+" + r.getPhone(), prepared.booking());
     }
@@ -361,18 +372,55 @@ public class RegistrationService {
                 || !payments.verifyCheckoutSignature(f.getPartnerId(), orderId, paymentId, signature)) {
             throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
         }
-        markPaid(r.getId(), paymentId, null);
+        Long paidPaise = null;
+        String method = null;
+        try {
+            for (var p : payments.orderPayments(f.getPartnerId(), orderId)) {
+                if (p.id().equals(paymentId)) {
+                    if (!"INR".equalsIgnoreCase(p.currency()) || p.state() == in.codebasket.cbwa.common.service.payment.PaymentGateway.PaymentState.FAILED) {
+                        throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment");
+                    }
+                    paidPaise = p.amountPaise();
+                    method = p.method();
+                }
+            }
+        } catch (AppException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            // Razorpay not reachable: the signature proves the payment of this server-made order; amount checked by order.
+            log.info("Payment lookup for registration {} failed: {}", r.getId(), e.getMessage());
+        }
+        if (!markPaid(r.getId(), paymentId, method, orderId, paidPaise)
+                && repository.findById(r.getId()).map(Registration::getPaymentStatus).orElse(null) != PaymentStatus.PAID) {
+            throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
+        }
         return tx.execute(s -> result(formRepository.findById(f.getId()).orElseThrow(), repository.findById(r.getId()).orElseThrow()));
     }
 
     /** Idempotent: completes the registration the first time its payment is confirmed. Returns true if it did. */
     public boolean markPaid(Long registrationId, String paymentId, String method) {
+        return markPaid(registrationId, paymentId, method, null, null);
+    }
+
+    /**
+     * Idempotent, and checked under the row lock: the payment must belong to the order the registration has now
+     * (orderId) and cover exactly its amount (paidPaise). null skips that check.
+     */
+    public boolean markPaid(Long registrationId, String paymentId, String method, String orderId, Long paidPaise) {
         Long formId = repository.findById(registrationId).map(Registration::getFormId).orElseThrow();
         Boolean done = tx.execute(s -> {
             // Same lock order as registering (form first) so the two can never deadlock.
             RegistrationForm f = formRepository.lockById(formId).orElseThrow();
             Registration r = repository.lockById(registrationId).orElseThrow();
             if (r.getPaymentStatus() == PaymentStatus.PAID) {
+                return false;
+            }
+            if (orderId != null && !orderId.equals(r.getRazorpayOrderId())) {
+                log.warn("Registration {}: payment {} is for order {}, not its current order", registrationId, paymentId, orderId);
+                return false;
+            }
+            if (paidPaise != null && (r.getAmount() == null || r.getAmount().movePointRight(2).longValueExact() != paidPaise)) {
+                log.warn("Registration {}: payment {} of {} paise does not match the amount {}", registrationId, paymentId, paidPaise, r.getAmount());
                 return false;
             }
             r.setPaymentStatus(PaymentStatus.PAID);
@@ -405,7 +453,18 @@ public class RegistrationService {
         }
         switch (type) {
             case "payment.captured", "order.paid" -> {
-                markPaid(r.getId(), pay.path("id").asText(null), pay.path("method").asText(null));
+                JsonNode orderEntity = event.path("payload").path("order").path("entity");
+                Long paise = null;
+                if (pay.hasNonNull("amount")) {
+                    paise = Long.valueOf(pay.path("amount").asLong());
+                } else if (orderEntity.hasNonNull("amount_paid")) {
+                    paise = Long.valueOf(orderEntity.path("amount_paid").asLong());
+                }
+                String currency = pay.path("currency").asText("INR");
+                if (!"INR".equalsIgnoreCase(currency)) {
+                    return "IGNORED";
+                }
+                markPaid(r.getId(), pay.path("id").asText(null), pay.path("method").asText(null), orderId, paise);
                 return "PROCESSED";
             }
             case "payment.failed" -> {
@@ -427,8 +486,9 @@ public class RegistrationService {
         try {
             for (var p : payments.orderPayments(r.getPartnerId(), r.getRazorpayOrderId())) {
                 if (p.state() == in.codebasket.cbwa.common.service.payment.PaymentGateway.PaymentState.CAPTURED) {
-                    markPaid(r.getId(), p.id(), p.method());
-                    return PaymentStatus.PAID;
+                    if (markPaid(r.getId(), p.id(), p.method(), r.getRazorpayOrderId(), p.amountPaise())) {
+                        return PaymentStatus.PAID;
+                    }
                 }
             }
         } catch (RuntimeException e) {
