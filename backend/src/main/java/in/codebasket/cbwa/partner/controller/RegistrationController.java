@@ -224,6 +224,12 @@ public class RegistrationController {
         return file(booking.invoicePdf(uid), MediaType.APPLICATION_PDF, "invoice.pdf", download);
     }
 
+    @GetMapping(value = "/api/public/bookings/{uid}/invoice-{seq:\\d{1,3}}.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> addOnInvoice(@PathVariable String uid, @PathVariable int seq,
+                                               @RequestParam(defaultValue = "true") boolean download) {
+        return file(booking.addOnInvoicePdf(uid, seq), MediaType.APPLICATION_PDF, "invoice-" + seq + ".pdf", download);
+    }
+
     @GetMapping(value = "/api/public/bookings/{uid}/passes.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> passesPdf(@PathVariable String uid, @RequestParam(defaultValue = "true") boolean download) {
         return file(booking.passesPdf(uid), MediaType.APPLICATION_PDF, "passes.pdf", download);

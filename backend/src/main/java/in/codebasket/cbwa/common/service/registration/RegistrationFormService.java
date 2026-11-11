@@ -30,6 +30,7 @@ import in.codebasket.cbwa.common.entity.Template;
 import in.codebasket.cbwa.common.repository.TemplateComponentRepository;
 import in.codebasket.cbwa.common.repository.TemplateRepository;
 import in.codebasket.cbwa.common.constants.TemplateStatus;
+import in.codebasket.cbwa.common.dto.ItineraryStop;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -126,7 +127,8 @@ public class RegistrationFormService {
 
     public record PackageDto(Long id, String code, String name, String description, String details, String icon, FileRef image,
                              java.math.BigDecimal mrp, java.math.BigDecimal salePrice, boolean mandatory, boolean active, int sortOrder,
-                             String passTitle, FileRef passDesign, boolean hasBookings, String imageUrl, boolean issuePass, String passStyle) {
+                             String passTitle, FileRef passDesign, boolean hasBookings, String imageUrl, boolean issuePass, String passStyle,
+                             List<ItineraryStop> itinerary) {
     }
 
     /** id null = new package. Packages left out of the list are deleted (or switched off when already booked). */
@@ -138,7 +140,8 @@ public class RegistrationFormService {
                                  @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal salePrice,
                                  Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid,
                                  @Size(max = 500) String imageUrl, Boolean issuePass,
-                                 @Pattern(regexp = "TICKET|FORM_DESIGN|ZIYARAT_CARD", message = "TICKET, FORM_DESIGN or ZIYARAT_CARD") String passStyle) {
+                                 @Pattern(regexp = "TICKET|FORM_DESIGN|ZIYARAT_CARD", message = "TICKET, FORM_DESIGN or ZIYARAT_CARD") String passStyle,
+                                 @Size(max = 60) List<@Valid ItineraryStop> itinerary) {
     }
 
     @Transactional(readOnly = true)
@@ -228,6 +231,7 @@ public class RegistrationFormService {
             e.setImageUrl(safeUrl(p.imageUrl(), "packages[" + (order - 1) + "].imageUrl"));
             e.setIssuePass(p.issuePass() == null || p.issuePass());
             e.setPassStyle(p.passStyle() == null ? "TICKET" : p.passStyle());
+            e.setItinerary(cleanItinerary(p.itinerary()));
             kept.add(packageRepository.saveAndFlush(e).getId());
             order++;
         }
@@ -245,6 +249,24 @@ public class RegistrationFormService {
     }
 
     /** Images by URL: our own paths (/ziyarat/…, /api/public/…) or https only - never javascript: or data: URLs. */
+    /** Trimmed stops; empty rows dropped; a stop without a round keeps the round of the stop before it. */
+    private static List<ItineraryStop> cleanItinerary(List<ItineraryStop> in) {
+        List<ItineraryStop> out = new ArrayList<>();
+        if (in == null) {
+            return out;
+        }
+        String round = null;
+        for (var s : in) {
+            if (s == null || s.place() == null || s.place().isBlank()) {
+                continue;
+            }
+            String r = trimToNull(s.round());
+            round = r != null ? r : round;
+            out.add(new ItineraryStop(round, s.place().trim(), trimToNull(s.time()), trimToNull(s.note())));
+        }
+        return out;
+    }
+
     private static String safeUrl(String url, String field) {
         if (url == null || url.isBlank()) {
             return null;
@@ -543,7 +565,7 @@ public class RegistrationFormService {
                 .map(p -> new PackageDto(p.getId(), p.getCode(), p.getName(), p.getDescription(), p.getDetails(), p.getIcon(),
                         fileRef(p.getImageFileId()), p.getMrp(), p.getSalePrice(), p.isMandatory(), p.isActive(), p.getSortOrder(),
                         p.getPassTitle(), fileRef(p.getPassDesignFileId()), itemRepository.existsByPackageId(p.getId()),
-                        p.getImageUrl(), p.isIssuePass(), p.getPassStyle()))
+                        p.getImageUrl(), p.isIssuePass(), p.getPassStyle(), p.getItinerary() == null ? List.of() : p.getItinerary()))
                 .toList();
     }
 

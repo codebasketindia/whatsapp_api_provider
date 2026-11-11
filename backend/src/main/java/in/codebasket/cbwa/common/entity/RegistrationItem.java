@@ -38,4 +38,7 @@ public class RegistrationItem extends BaseEntity {
     private Long passFileId;
     private Instant redeemedAt;
     private Long redeemedBy;
+
+    /** Add-on order this item was bought in; null = the first booking. */
+    private Long orderId;
 }

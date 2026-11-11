@@ -50,6 +50,7 @@ public class BookingService {
 
     private final RegistrationPackageRepository packageRepository;
     private final RegistrationItemRepository itemRepository;
+    private final in.codebasket.cbwa.common.repository.BookingOrderRepository orderRepository;
     private final RegistrationRepository registrationRepository;
     private final RegistrationFormRepository formRepository;
     private final PartnerRepository partnerRepository;
@@ -60,7 +61,8 @@ public class BookingService {
     private final AppProperties props;
 
     public record PackageView(Long id, String code, String name, String description, String details, String icon, String imageUrl,
-                              BigDecimal mrp, BigDecimal salePrice, boolean mandatory, boolean issuePass) {
+                              BigDecimal mrp, BigDecimal salePrice, boolean mandatory, boolean issuePass,
+                              List<in.codebasket.cbwa.common.dto.ItineraryStop> itinerary) {
     }
 
     /** Combo offer shown on the page: all these packages together for one price. */
@@ -71,7 +73,12 @@ public class BookingService {
     }
 
     public record BookingView(String bookingNo, String invoiceNo, BigDecimal mrpTotal, BigDecimal total, List<ItemView> items,
-                              String invoiceUrl, String passesPdfUrl, BigDecimal discountAmount, String discountLabel) {
+                              String invoiceUrl, String passesPdfUrl, BigDecimal discountAmount, String discountLabel,
+                              List<InvoiceLink> invoices) {
+    }
+
+    /** One invoice of a booking: the first booking, then one per paid add-on. */
+    public record InvoiceLink(String invoiceNo, String url) {
     }
 
     public record Totals(BigDecimal mrp, BigDecimal total, BigDecimal discount, String discountLabel) {
@@ -92,7 +99,7 @@ public class BookingService {
     public List<PackageView> publicPackages(Long formId) {
         return activePackages(formId).stream().map(p -> new PackageView(p.getId(), p.getCode(), p.getName(), p.getDescription(),
                 p.getDetails(), p.getIcon(), p.getImageFileId() != null ? fileUrl(p.getImageFileId()) : p.getImageUrl(), p.getMrp(), p.getSalePrice(),
-                p.isMandatory(), p.isIssuePass())).toList();
+                p.isMandatory(), p.isIssuePass(), p.getItinerary() == null ? List.of() : p.getItinerary())).toList();
     }
 
     /** The link's combo offer while it is valid, else null. */
@@ -241,10 +248,24 @@ public class BookingService {
             total = total.add(it.getPrice());
         }
         BigDecimal discount = r.getDiscountAmount() == null ? BigDecimal.ZERO : r.getDiscountAmount();
+        List<InvoiceLink> invoices = new ArrayList<>();
+        if (done) {
+            invoices.add(new InvoiceLink(r.getInvoiceNo(), base + "/invoice.pdf"));
+            for (var o : orderRepository.findByRegistrationIdOrderBySeqAsc(r.getId())) {
+                if (in.codebasket.cbwa.common.entity.BookingOrder.PAID.equals(o.getStatus())) {
+                    if (o.getDiscountAmount() != null) {
+                        discount = discount.add(o.getDiscountAmount());
+                    }
+                    if (o.getInvoiceNo() != null) {
+                        invoices.add(new InvoiceLink(o.getInvoiceNo(), base + "/invoice-" + o.getSeq() + ".pdf"));
+                    }
+                }
+            }
+        }
         boolean anyPass = views.stream().anyMatch(v -> v.passUrl() != null);
         return new BookingView(r.getPassNo(), r.getInvoiceNo(), mrp, total.subtract(discount), views,
                 done ? base + "/invoice.pdf" : null, done && anyPass ? base + "/passes.pdf" : null,
-                discount.signum() > 0 ? discount : null, r.getDiscountLabel());
+                discount.signum() > 0 ? discount : null, r.getDiscountLabel(), invoices);
     }
 
     @Transactional(readOnly = true)
@@ -260,7 +281,80 @@ public class BookingService {
         Registration r = paidBooking(uid);
         RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
         return documents.invoice(partnerRepository.findById(r.getPartnerId()).orElseThrow(), f, r,
-                itemRepository.findByRegistrationIdOrderByIdAsc(r.getId()));
+                itemRepository.findByRegistrationIdOrderByIdAsc(r.getId()).stream().filter(i -> i.getOrderId() == null).toList());
+    }
+
+    /** Invoice of a paid add-on order (seq 2, 3, ...). */
+    @Transactional(readOnly = true)
+    public byte[] addOnInvoicePdf(String uid, int seq) {
+        Registration r = paidBooking(uid);
+        var o = orderRepository.findByRegistrationIdAndSeq(r.getId(), seq)
+                .filter(x -> in.codebasket.cbwa.common.entity.BookingOrder.PAID.equals(x.getStatus()) && x.getInvoiceNo() != null)
+                .orElseThrow(() -> AppException.notFound("Invoice"));
+        // The invoice is drawn from the booking's details with this order's number, date, discount and payment.
+        Registration inv = new Registration();
+        inv.setName(r.getName());
+        inv.setPhone(r.getPhone());
+        inv.setPassNo(r.getPassNo());
+        inv.setCreatedAt(o.getCreatedAt());
+        inv.setInvoiceNo(o.getInvoiceNo());
+        inv.setPaidAt(o.getPaidAt());
+        inv.setDiscountAmount(o.getDiscountAmount());
+        inv.setDiscountLabel(o.getDiscountLabel());
+        inv.setRazorpayPaymentId(o.getRazorpayPaymentId());
+        inv.setPaymentMethod(o.getPaymentMethod());
+        RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
+        return documents.invoice(partnerRepository.findById(r.getPartnerId()).orElseThrow(), f, inv, itemRepository.findByOrderIdOrderByIdAsc(o.getId()));
+    }
+
+    /** Pass id + pass image for items bought in an add-on; returns their stored files. */
+    public List<StoredFile> completeAddOnItems(RegistrationForm f, Registration r, List<RegistrationItem> items) {
+        Map<Long, RegistrationPackage> pk = packageRepository.findAllById(items.stream().map(RegistrationItem::getPackageId).toList())
+                .stream().collect(Collectors.toMap(RegistrationPackage::getId, Function.identity()));
+        Partner partner = partnerRepository.findById(f.getPartnerId()).orElseThrow();
+        List<StoredFile> files = new ArrayList<>();
+        for (RegistrationItem it : items) {
+            RegistrationPackage p = pk.get(it.getPackageId());
+            if (p != null && !p.isIssuePass()) {
+                continue;
+            }
+            it.setPassNo(r.getPassNo() + "-" + (p == null ? "P" + it.getPackageId() : p.getCode()));
+            itemRepository.saveAndFlush(it);
+            byte[] jpg = renderItemPass(f, r, it, p, partner);
+            StoredFile file = storage.store(jpg, it.getPassNo() + ".jpg", FileCategory.MEDIA_OUTBOUND, f.getPartnerId(), Set.of("image/jpeg"), 5L << 20);
+            it.setPassFileId(file.getId());
+            itemRepository.save(it);
+            files.add(file);
+        }
+        return files;
+    }
+
+    public Map<Long, RegistrationPackage> packagesById(Collection<Long> ids) {
+        return packageRepository.findAllById(ids).stream().collect(Collectors.toMap(RegistrationPackage::getId, Function.identity()));
+    }
+
+    /** Totals for a set of packages bought together (combo discount only when the whole combo is in this set). */
+    public Totals totalsFor(RegistrationForm f, List<RegistrationPackage> picked) {
+        BigDecimal mrp = BigDecimal.ZERO, total = BigDecimal.ZERO;
+        for (RegistrationPackage p : picked) {
+            mrp = mrp.add(p.getMrp());
+            total = total.add(p.getSalePrice());
+        }
+        BigDecimal discount = BigDecimal.ZERO;
+        String label = null;
+        ComboView combo = combo(f);
+        if (combo != null) {
+            Set<String> codes = picked.stream().map(RegistrationPackage::getCode).collect(Collectors.toSet());
+            if (codes.containsAll(combo.codes())) {
+                BigDecimal comboSum = picked.stream().filter(p -> combo.codes().contains(p.getCode()))
+                        .map(RegistrationPackage::getSalePrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (comboSum.compareTo(combo.price()) > 0) {
+                    discount = comboSum.subtract(combo.price());
+                    label = "Combo Discount" + (combo.title() == null ? "" : " (" + combo.title() + ")");
+                }
+            }
+        }
+        return new Totals(mrp, total.subtract(discount), discount, label);
     }
 
     @Transactional(readOnly = true)

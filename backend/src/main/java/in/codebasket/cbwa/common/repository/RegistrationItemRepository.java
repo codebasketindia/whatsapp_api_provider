@@ -16,6 +16,8 @@ public interface RegistrationItemRepository extends JpaRepository<RegistrationIt
 
     boolean existsByPackageId(Long packageId);
 
+    List<RegistrationItem> findByOrderIdOrderByIdAsc(Long orderId);
+
     void deleteByRegistrationId(Long registrationId);
 
     /** Redeems once: 1 when this call redeemed it, 0 when it was already redeemed. */

@@ -8,9 +8,9 @@ import { useProtectedUrl } from '../../inbox/components/ChatBubble';
 import PackageIcon, { PACKAGE_ICONS } from '../../../public/register/PackageIcon';
 import { discountPercent, rupees } from '../../../public/register/bookingHelpers';
 
-export const EMPTY_PACKAGE = { id: null, code: '', name: '', description: '', details: '', icon: 'sparkles', image: null, mrp: '', salePrice: '', mandatory: false, active: true, passTitle: '', imageUrl: '', issuePass: true, passStyle: 'TICKET' };
+export const EMPTY_PACKAGE = { id: null, code: '', name: '', description: '', details: '', icon: 'sparkles', image: null, mrp: '', salePrice: '', mandatory: false, active: true, passTitle: '', imageUrl: '', issuePass: true, passStyle: 'TICKET', itinerary: [] };
 
-export const packageToForm = (p) => ({ ...EMPTY_PACKAGE, ...p, description: p.description || '', details: p.details || '', icon: p.icon || 'sparkles', passTitle: p.passTitle || '', imageUrl: p.imageUrl || '', issuePass: p.issuePass !== false, passStyle: p.passStyle || 'TICKET', mrp: p.mrp ?? '', salePrice: p.salePrice ?? '' });
+export const packageToForm = (p) => ({ ...EMPTY_PACKAGE, ...p, description: p.description || '', details: p.details || '', icon: p.icon || 'sparkles', passTitle: p.passTitle || '', imageUrl: p.imageUrl || '', issuePass: p.issuePass !== false, passStyle: p.passStyle || 'TICKET', itinerary: (p.itinerary || []).map((x) => ({ round: x.round || '', place: x.place || '', time: x.time || '', note: x.note || '' })), mrp: p.mrp ?? '', salePrice: p.salePrice ?? '' });
 
 export const formToPackage = (p, i) => ({
   id: p.id || null, code: p.code.trim().toUpperCase(), name: p.name.trim(), description: p.description?.trim() || null,
@@ -18,7 +18,48 @@ export const formToPackage = (p, i) => ({
   mrp: Number(p.mrp || 0), salePrice: Number(p.salePrice || 0), mandatory: Boolean(p.mandatory), active: p.active !== false,
   sortOrder: i + 1, passTitle: p.passTitle?.trim() || null,
   imageUrl: p.imageUrl?.trim() || null, issuePass: p.issuePass !== false, passStyle: p.passStyle || 'TICKET',
+  itinerary: (p.itinerary || []).filter((x) => x.place?.trim()).map((x) => ({
+    round: x.round?.trim() || null, place: x.place.trim(), time: x.time?.trim() || null, note: x.note?.trim() || null })),
 });
+
+/** Rounds / days with places for "Full Details". A row without a round keeps the round above it. */
+function ItineraryEditor({ value, onChange }) {
+  const list = value || [];
+  const set = (i, patch) => onChange(list.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const move = (i, d) => {
+    const next = [...list];
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    onChange(next);
+  };
+  return (
+    <div className="mt-4 rounded-lg border border-line p-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Itinerary <span className="font-normal text-muted">({list.length})</span></p>
+        <Button size="sm" variant="secondary" leftIcon={Plus} disabled={list.length >= 60}
+                onClick={() => onChange([...list, { round: list.length ? '' : 'Round 1', place: '', time: '', note: '' }])}>Add stop</Button>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-xs text-muted">No itinerary yet. Add the rounds / days and the places visited — shown under “Full Details”.</p>
+      ) : (
+        <ul className="space-y-2">
+          {list.map((x, i) => (
+            <li key={i} className="grid grid-cols-1 gap-2 rounded-lg bg-surface-2 p-2 md:grid-cols-[140px_1fr_110px_1fr_auto]">
+              <Input label="Round / Day" maxLength={80} value={x.round} placeholder={i ? 'same as above' : 'Round 1'} onChange={(e) => set(i, { round: e.target.value })} />
+              <Input label="Place" required maxLength={160} value={x.place} placeholder="Masjid Quba" onChange={(e) => set(i, { place: e.target.value })} />
+              <Input label="Time" maxLength={40} value={x.time} placeholder="8:00 AM" onChange={(e) => set(i, { time: e.target.value })} />
+              <Input label="Note" maxLength={500} value={x.note} placeholder="2 rakat nafl" onChange={(e) => set(i, { note: e.target.value })} />
+              <div className="flex items-end gap-1">
+                <IconButton icon={ArrowUp} label="Move up" disabled={i === 0} onClick={() => move(i, -1)} />
+                <IconButton icon={ArrowDown} label="Move down" disabled={i === list.length - 1} onClick={() => move(i, 1)} />
+                <IconButton icon={Trash2} label="Remove stop" onClick={() => onChange(list.filter((_, j) => j !== i))} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) {
   const [uploading, setUploading] = useState(false);
@@ -80,6 +121,7 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
         <Switch checked={p.active} onChange={(v) => set({ active: v })} label="Show on the page" />
         <Switch checked={p.issuePass} onChange={(v) => set({ issuePass: v })} label="Issue a QR pass" />
       </div>
+      {!p.mandatory && <ItineraryEditor value={p.itinerary} onChange={(itinerary) => set({ itinerary })} />}
     </li>
   );
 }

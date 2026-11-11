@@ -1,12 +1,17 @@
 package in.codebasket.cbwa.common.entity;
 
+import in.codebasket.cbwa.common.dto.ItineraryStop;
+import in.codebasket.cbwa.config.ItineraryListConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /** A bookable package on a registration link (e.g. "Special Makkah & Madina Ziyarat"). One QR pass per paid package. */
 @Getter
@@ -63,4 +68,9 @@ public class RegistrationPackage extends AuditableEntity {
     /** TICKET (generated pass) or FORM_DESIGN (the link's pass design with the QR in the photo box). */
     @Column(nullable = false)
     private String passStyle = "TICKET";
+
+    /** Rounds / days with places, shown under "Full Details". */
+    @Convert(converter = ItineraryListConverter.class)
+    @Column(columnDefinition = "LONGTEXT")
+    private List<ItineraryStop> itinerary = new ArrayList<>();
 }

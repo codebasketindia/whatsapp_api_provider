@@ -45,6 +45,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import in.codebasket.cbwa.common.repository.RegistrationItemRepository;
 import in.codebasket.cbwa.common.service.registration.BookingService;
@@ -160,8 +161,9 @@ class BookingIT extends AbstractIntegrationTest {
         tokenCall("/api/partner/passes/redeem", qr, token).andExpect(jsonPath("$.data.status").value("ALREADY_REDEEMED"))
                 .andExpect(jsonPath("$.data.redeemedAt").isNotEmpty());
 
-        // Paid: the same number cannot book again; the other passes are untouched.
-        register("Imran Shaikh", "9811122233", "").andExpect(status().isConflict());
+        // Paid: the same number comes back without choosing a new pass - nothing to add; the other passes are untouched.
+        register("Imran Shaikh", "9811122233", "").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("packageIds"));
         assertThat(itemRepository.findById(items.get(0).getId()).orElseThrow().getRedeemedAt()).isNull();
     }
 
@@ -250,6 +252,85 @@ class BookingIT extends AbstractIntegrationTest {
         RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_S4\",\"status\":\"created\"}")));
         String other = register("Forge Test", "9800000004", all).andReturn().getResponse().getContentAsString();
         verify(TestData.json(other).path("data").path("uid").asText(), "order_S4", "pay_S4", "deadbeef").andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void sameNumberAddsPassesToItsBookingUntilTheComboIsOwned() throws Exception {
+        String form = send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/partner/registration-forms"), """
+                {"title":"Ziyarat Passes for HAJJ 2027","slug":"ziyarat-2027","senderId":%d,"passPrefix":"HZ",
+                 "comboTitle":"Teeno Paid Pass","comboCodes":"SMM,AMM,ACZ","comboPrice":9000,
+                 "packages":[
+                   {"code":"REG","name":"Registration / Person","mrp":49,"salePrice":49,"mandatory":true,"issuePass":false},
+                   {"code":"HZS","name":"Haramain Ziyarat Show Pass","mrp":0,"salePrice":0,
+                    "itinerary":[{"round":"Round 1","place":"Masjid Quba","time":"8:00 AM"},{"place":"Masjid Qiblatain"},{"place":"  "}]},
+                   {"code":"SMM","name":"Khaas","mrp":6000,"salePrice":3000},
+                   {"code":"AMM","name":"Mazeed","mrp":6000,"salePrice":3000},
+                   {"code":"ACZ","name":"Taif","mrp":8000,"salePrice":4000}]}""".formatted(sender.getId()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.packages[1].itinerary.length()").value(2))
+                .andExpect(jsonPath("$.data.packages[1].itinerary[1].round").value("Round 1"))
+                .andReturn().getResponse().getContentAsString();
+        var pk = TestData.json(form).path("data").path("packages");
+        String hzs = pk.get(1).path("id").asText(), smm = pk.get(2).path("id").asText(), amm = pk.get(3).path("id").asText(),
+                acz = pk.get(4).path("id").asText();
+        fetch("/api/public/register/ziyarat-2027").andExpect(jsonPath("$.data.packages[1].itinerary[0].place").value("Masjid Quba"));
+
+        // First booking: free pass + Rs 49 fee.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_A1\",\"status\":\"created\"}")));
+        String first = register("Shahid Husen", "9226926292", hzs).andExpect(jsonPath("$.data.amount").value("49.00"))
+                .andReturn().getResponse().getContentAsString();
+        String uid = TestData.json(first).path("data").path("uid").asText();
+        verify(uid, "order_A1", "pay_A1", sign("order_A1|pay_A1")).andExpect(status().isOk());
+
+        // Same number adds Khaas: only Rs 3,000 (no fee again), same booking, second invoice.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_A2\",\"status\":\"created\"}")));
+        register("Shahid Husen", "9226926292", smm).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.uid").value(uid)).andExpect(jsonPath("$.data.amount").value("3000.00"))
+                .andExpect(jsonPath("$.data.payment.amount").value(300000));
+        // A cheap old order or a short payment cannot complete it.
+        verify(uid, "order_A1", "pay_X", sign("order_A1|pay_X")).andExpect(jsonPath("$.data.booking.items.length()").value(2));
+        RZP.stubFor(get(urlEqualTo("/v1/orders/order_A2/payments")).willReturn(json("""
+                {"items":[{"id":"pay_A2","order_id":"order_A2","amount":4900,"currency":"INR","status":"captured"}]}""")));
+        verify(uid, "order_A2", "pay_A2", sign("order_A2|pay_A2")).andExpect(status().is4xxClientError());
+        RZP.stubFor(get(urlEqualTo("/v1/orders/order_A2/payments")).willReturn(json("""
+                {"items":[{"id":"pay_A3","order_id":"order_A2","amount":300000,"currency":"INR","status":"captured"}]}""")));
+        verify(uid, "order_A2", "pay_A3", sign("order_A2|pay_A3")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.passNo").value("HZ-000001"))
+                .andExpect(jsonPath("$.data.booking.items.length()").value(3))
+                .andExpect(jsonPath("$.data.booking.items[2].passNo").value("HZ-000001-SMM"))
+                .andExpect(jsonPath("$.data.booking.total").value("3049.00"))
+                .andExpect(jsonPath("$.data.booking.invoices.length()").value(2))
+                .andExpect(jsonPath("$.data.booking.invoices[1].invoiceNo").value("INV-HZ-000001-2"));
+        Registration reg = registrationRepository.findByUid(uid).orElseThrow();
+        assertThat(registrationRepository.count()).isEqualTo(1);
+        fetch("/api/public/bookings/" + reg.getUid() + "/invoice-2.pdf").andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+        fetch("/api/public/bookings/" + reg.getUid() + "/invoice-3.pdf").andExpect(status().isNotFound());
+
+        // Choosing a pass it already has is refused and names it.
+        register("Shahid Husen", "9226926292", smm + "," + amm).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field=='ownedPackageIds')].message").value(smm));
+        // Mazeed + Taif later: not the whole combo in one purchase, so no combo discount (Rs 7,000).
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_A4\",\"status\":\"created\"}")));
+        register("Shahid Husen", "9226926292", amm + "," + acz).andExpect(jsonPath("$.data.amount").value("7000.00"));
+        verify(uid, "order_A4", "pay_A4", sign("order_A4|pay_A4")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.booking.items.length()").value(5));
+        // The whole combo is owned now: "already registered".
+        register("Shahid Husen", "9226926292", hzs).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("mobile"));
+
+        // Another number: free first, then all three paid passes in one add-on get the combo price.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_B1\",\"status\":\"created\"}")));
+        String b = TestData.json(register("Hafiz Ansari", "8007855095", hzs).andReturn().getResponse().getContentAsString()).path("data").path("uid").asText();
+        verify(b, "order_B1", "pay_B1", sign("order_B1|pay_B1")).andExpect(status().isOk());
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_B2\",\"status\":\"created\"}")));
+        register("Hafiz Ansari", "8007855095", smm + "," + amm + "," + acz).andExpect(jsonPath("$.data.amount").value("9000.00"));
+        // A newer attempt replaces the unpaid one: the replaced order cannot pay any more.
+        RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_B3\",\"status\":\"created\"}")));
+        register("Hafiz Ansari", "8007855095", smm).andExpect(jsonPath("$.data.amount").value("3000.00"));
+        verify(b, "order_B2", "pay_B2", sign("order_B2|pay_B2")).andExpect(status().is4xxClientError());
+        verify(b, "order_B3", "pay_B3", sign("order_B3|pay_B3")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.booking.items.length()").value(3));
     }
 
     private ResultActions register(String name, String mobile, String packageIds) throws Exception {

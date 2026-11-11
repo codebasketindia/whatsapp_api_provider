@@ -99,6 +99,7 @@ public class RegistrationService {
     private final in.codebasket.cbwa.common.service.scheduling.ScheduledMessageService scheduledService;
     private final PartnerPaymentService payments;
     private final BookingService booking;
+    private final AddOnBookingService addOns;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
@@ -111,8 +112,9 @@ public class RegistrationService {
                                MessageRepository messageRepository, OutboundMessageService outbound,
                                in.codebasket.cbwa.common.service.scheduling.ScheduledMessageService scheduledService,
                                ApplicationEventPublisher events, JdbcTemplate jdbc, PlatformTransactionManager txManager,
-                               PartnerPaymentService payments, BookingService booking) {
+                               PartnerPaymentService payments, BookingService booking, AddOnBookingService addOns) {
         this.payments = payments;
+        this.addOns = addOns;
         this.booking = booking;
         this.formRepository = formRepository;
         this.repository = repository;
@@ -203,6 +205,9 @@ public class RegistrationService {
         }
         Registration r = repository.findByUid(prepared.uid()).orElseThrow();
         RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
+        if (r.getPaymentStatus() == PaymentStatus.PAID || r.getPaymentStatus() == PaymentStatus.NOT_REQUIRED) {
+            return addOnCheckout(f, r);
+        }
         long paise = r.getAmount().movePointRight(2).longValueExact();
         Map<String, String> notes = new LinkedHashMap<>();
         notes.put("registration", r.getUid());
@@ -225,6 +230,28 @@ public class RegistrationService {
         }
         return new RegisterResult(prepared.uid(), prepared.name(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
                 PaymentStatus.PENDING, r.getAmount(), checkout, "+" + r.getPhone(), prepared.booking());
+    }
+
+    /** Razorpay order for the add-on just created on a paid booking. */
+    private RegisterResult addOnCheckout(RegistrationForm f, Registration r) {
+        in.codebasket.cbwa.common.entity.BookingOrder o = addOns.pendingWithoutCheckout(r.getId());
+        if (o == null) {
+            throw new AppException(ErrorCode.CONFLICT, "Your selection changed while we were preparing the payment. Please tap Pay again");
+        }
+        long paise = o.getAmount().movePointRight(2).longValueExact();
+        Map<String, String> notes = new LinkedHashMap<>();
+        notes.put("registration", r.getUid());
+        notes.put("addOn", String.valueOf(o.getSeq()));
+        notes.put("form", f.getSlug());
+        notes.put("mobile", "+" + r.getPhone());
+        PartnerPaymentService.Checkout checkout = payments.createOrder(f.getPartnerId(), paise,
+                "ADD-" + r.getUid().substring(14) + "-" + o.getSeq(), notes,
+                partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(f.getTitle()), f.getTitle());
+        if (!addOns.attach(o.getId(), checkout.orderId(), paise)) {
+            throw new AppException(ErrorCode.CONFLICT, "Your selection changed while we were preparing the payment. Please tap Pay again");
+        }
+        return new RegisterResult(r.getUid(), r.getName(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
+                PaymentStatus.PENDING, o.getAmount(), checkout, "+" + r.getPhone(), null);
     }
 
     private RegisterResult prepare(String slug, String rawName, String rawMobile, Boolean consent, MultipartFile photo,
@@ -254,6 +281,17 @@ public class RegistrationService {
             throw new AppException(ErrorCode.CONFLICT, closed);
         }
         Registration r = repository.findByFormIdAndPhone(f.getId(), phone).orElse(null);
+        if (r != null && (r.getPaymentStatus() == PaymentStatus.PAID || r.getPaymentStatus() == PaymentStatus.NOT_REQUIRED)
+                && withPackages && r.getPassNo() != null) {
+            // Same number again: the passes it does not have yet join its booking (fee not charged again).
+            Registration locked = repository.lockById(r.getId()).orElseThrow();
+            in.codebasket.cbwa.common.entity.BookingOrder o = addOns.start(f, locked, packageIds);
+            if (o.getAmount().signum() == 0) {
+                return result(f, locked);
+            }
+            return new RegisterResult(locked.getUid(), locked.getName(), null, null, PassStatus.AWAITING_PAYMENT, null, f.getSuccessMessage(),
+                    PaymentStatus.PENDING, o.getAmount(), null, "+" + phone, null);
+        }
         if (r != null && (r.getPaymentStatus() == PaymentStatus.PAID || r.getPaymentStatus() == PaymentStatus.NOT_REQUIRED)) {
             throw new AppException(ErrorCode.CONFLICT, "This mobile number is already registered",
                     null, List.of(new in.codebasket.cbwa.common.dto.FieldErrorDto("mobile", "This mobile number is already registered")));
@@ -365,6 +403,10 @@ public class RegistrationService {
         Registration r = repository.findByUid(uid).orElseThrow(() -> AppException.notFound("Registration"));
         RegistrationForm f = formRepository.findById(r.getFormId()).filter(x -> x.getSlug().equals(slug))
                 .orElseThrow(() -> AppException.notFound("Registration"));
+        in.codebasket.cbwa.common.entity.BookingOrder addOn = addOns.byRazorpayOrder(orderId);
+        if (addOn != null && addOn.getRegistrationId().equals(r.getId())) {
+            return verifyAddOn(f, r, addOn, orderId, paymentId, signature);
+        }
         if (r.getPaymentStatus() == PaymentStatus.PAID) {
             return result(f, r);
         }
@@ -395,6 +437,46 @@ public class RegistrationService {
             throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
         }
         return tx.execute(s -> result(formRepository.findById(f.getId()).orElseThrow(), repository.findById(r.getId()).orElseThrow()));
+    }
+
+    private RegisterResult verifyAddOn(RegistrationForm f, Registration r, in.codebasket.cbwa.common.entity.BookingOrder o,
+                                       String orderId, String paymentId, String signature) {
+        if (!in.codebasket.cbwa.common.entity.BookingOrder.PAID.equals(o.getStatus())) {
+            if (!payments.verifyCheckoutSignature(f.getPartnerId(), orderId, paymentId, signature)) {
+                throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
+            }
+            PaidCheck paid = lookUpPayment(f.getPartnerId(), orderId, paymentId);
+            if (!addOns.markPaid(o.getId(), orderId, paymentId, paid.method(), paid.paise())
+                    && !in.codebasket.cbwa.common.entity.BookingOrder.PAID.equals(addOns.byRazorpayOrder(orderId).getStatus())) {
+                throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment. If money was taken, it will be confirmed in a few minutes");
+            }
+        }
+        RegisterResult res = tx.execute(s -> result(formRepository.findById(f.getId()).orElseThrow(), repository.findById(r.getId()).orElseThrow()));
+        // The amount of this add-on payment, not of the first booking.
+        return new RegisterResult(res.uid(), res.name(), res.passNo(), res.passUrl(), res.passStatus(), res.whatsappLink(),
+                res.successMessage(), res.paymentStatus(), o.getAmount(), res.payment(), res.mobile(), res.booking());
+    }
+
+    private record PaidCheck(Long paise, String method) {
+    }
+
+    /** Amount + method of a payment from Razorpay; refuses failed / non-INR payments; unknown when Razorpay is unreachable. */
+    private PaidCheck lookUpPayment(Long partnerId, String orderId, String paymentId) {
+        try {
+            for (var p : payments.orderPayments(partnerId, orderId)) {
+                if (p.id().equals(paymentId)) {
+                    if (!"INR".equalsIgnoreCase(p.currency()) || p.state() == in.codebasket.cbwa.common.service.payment.PaymentGateway.PaymentState.FAILED) {
+                        throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID, "We could not confirm this payment");
+                    }
+                    return new PaidCheck(p.amountPaise(), p.method());
+                }
+            }
+        } catch (AppException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.info("Payment lookup for order {} failed: {}", orderId, e.getMessage());
+        }
+        return new PaidCheck(null, null);
     }
 
     /** Idempotent: completes the registration the first time its payment is confirmed. Returns true if it did. */
@@ -449,7 +531,29 @@ public class RegistrationService {
         }
         Registration r = repository.findByRazorpayOrderId(orderId).filter(x -> x.getPartnerId().equals(partnerId)).orElse(null);
         if (r == null) {
-            return "IGNORED";
+            in.codebasket.cbwa.common.entity.BookingOrder o = addOns.byRazorpayOrder(orderId);
+            if (o == null || !o.getPartnerId().equals(partnerId)) {
+                return "IGNORED";
+            }
+            switch (type) {
+                case "payment.captured", "order.paid" -> {
+                    if (!"INR".equalsIgnoreCase(pay.path("currency").asText("INR"))) {
+                        return "IGNORED";
+                    }
+                    Long paise = pay.hasNonNull("amount") ? Long.valueOf(pay.path("amount").asLong())
+                            : event.path("payload").path("order").path("entity").hasNonNull("amount_paid")
+                            ? Long.valueOf(event.path("payload").path("order").path("entity").path("amount_paid").asLong()) : null;
+                    addOns.markPaid(o.getId(), orderId, pay.path("id").asText(null), pay.path("method").asText(null), paise);
+                    return "PROCESSED";
+                }
+                case "payment.failed" -> {
+                    addOns.markFailed(o.getId());
+                    return "PROCESSED";
+                }
+                default -> {
+                    return "IGNORED";
+                }
+            }
         }
         switch (type) {
             case "payment.captured", "order.paid" -> {
@@ -495,6 +599,22 @@ public class RegistrationService {
             log.info("Payment check for registration {} failed: {}", r.getId(), e.getMessage());
         }
         return repository.findById(r.getId()).map(Registration::getPaymentStatus).orElse(r.getPaymentStatus());
+    }
+
+    /** Asks Razorpay about an unpaid add-on order; completes it if a payment was captured. */
+    public boolean checkAddOnPayment(in.codebasket.cbwa.common.entity.BookingOrder o) {
+        try {
+            for (var p : payments.orderPayments(o.getPartnerId(), o.getRazorpayOrderId())) {
+                if (p.state() == in.codebasket.cbwa.common.service.payment.PaymentGateway.PaymentState.CAPTURED
+                        && "INR".equalsIgnoreCase(p.currency())
+                        && addOns.markPaid(o.getId(), o.getRazorpayOrderId(), p.id(), p.method(), p.amountPaise())) {
+                    return true;
+                }
+            }
+        } catch (RuntimeException e) {
+            log.info("Payment check for add-on order {} failed: {}", o.getId(), e.getMessage());
+        }
+        return false;
     }
 
     /** RG4: partner asks to re-check one registration's payment. */
@@ -587,6 +707,38 @@ public class RegistrationService {
                 x.setPassError(msg.length() > 500 ? msg.substring(0, 500) : msg);
             }));
             return PassStatus.FAILED;
+        }
+    }
+
+    /** Passes bought in an add-on go to the same WhatsApp number (open chat: images; else the pass template). */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onAddOnPaid(AddOnBookingService.AddOnPaidEvent e) {
+        try {
+            Registration r = repository.findById(e.registrationId()).orElseThrow();
+            RegistrationForm f = formRepository.findById(r.getFormId()).orElseThrow();
+            boolean open = windowRepository.findByPhoneNumberIdAndWaId(f.getPhoneNumberId(), r.getPhone())
+                    .map(w -> w.getExpiresAt() != null && w.getExpiresAt().isAfter(Instant.now())).orElse(false);
+            Map<String, String> v = Placeholders.of(r.getName(), "+" + r.getPhone(), r.getPassNo());
+            for (Long fileId : e.passFileIds()) {
+                StoredFile pass = fileRepository.findById(fileId).orElseThrow();
+                SendMessageRequest req;
+                if (open) {
+                    String caption = Placeholders.apply(f.getPassCaption() != null ? f.getPassCaption()
+                            : "Assalamu Alaikum {name}, here is your pass {passNo}. Please show it at the entry.", v);
+                    req = new SendMessageRequest(f.getPhoneNumberId(), null, r.getPhone(), "image", null, null, null,
+                            new SendMessageRequest.Media(pass.getUid(), null, null, caption.length() > 1024 ? caption.substring(0, 1024) : caption, null),
+                            null, null, null, null, null, null);
+                } else if (f.getPassTemplateId() != null) {
+                    req = RegistrationFormService.passTemplateMessage(f, f.getPhoneNumberId(), r.getPhone(), null, pass.getUid(), v);
+                } else {
+                    return; // no open chat and no template: the person downloads the new passes from the booking page
+                }
+                tx.executeWithoutResult(s -> outbound.enqueue(OutboundCommand.of(f.getPartnerId(), f.getPhoneNumberId(), r.getPhone(),
+                        req, MessageSource.REGISTRATION)));
+            }
+        } catch (RuntimeException ex) {
+            log.warn("Add-on passes for registration {} not sent: {}", e.registrationId(), ex.getMessage());
         }
     }
 

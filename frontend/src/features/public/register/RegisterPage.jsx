@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bus, Check, ChevronRight, Download, FileText, MessageCircle, QrCode, ShieldCheck, Ticket, X } from 'lucide-react';
+import { Bus, Check, ChevronRight, Download, FileText, ListChecks, MessageCircle, QrCode, ShieldCheck, Ticket, X } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { getErrorMessage, getFieldErrors } from '../../../api/axios';
 import { Alert, Button, Checkbox, FileUpload, Input, PhoneInput, Spinner, isIndianMobile } from '../../../components/ui';
@@ -109,11 +109,9 @@ function PassCard({ p, on, onToggle, onInfo, index }) {
           <PriceBlock p={p} />
         </span>
       </button>
-      {p.details && (
-        <button type="button" onClick={onInfo} className="mt-1.5 inline-flex min-h-[32px] items-center gap-1 px-1 text-xs font-semibold text-[#0b5a33]">
-          View full details <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      )}
+      <button type="button" onClick={onInfo} className="mt-1.5 inline-flex min-h-[32px] items-center gap-1 px-1 text-xs font-semibold text-[#0b5a33]">
+        View full details <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+      </button>
     </div>
   );
 }
@@ -158,16 +156,81 @@ function Description({ text }) {
   );
 }
 
-function DetailsSheet({ p, onClose }) {
+/** Stops grouped by round / day, in order. */
+function groupRounds(stops) {
+  const out = [];
+  for (const x of stops || []) {
+    const round = x.round || '';
+    if (!out.length || out[out.length - 1].round !== round) out.push({ round, stops: [] });
+    out[out.length - 1].stops.push(x);
+  }
+  return out;
+}
+
+/** "Full Details": one tab per pass; each tab shows the pass and its itinerary (from the database). */
+function FullDetails({ packages, startId, onClose }) {
+  const [active, setActive] = useState(startId ?? packages[0]?.id);
+  const tabsRef = useRef(null);
+  useEffect(() => {
+    tabsRef.current?.querySelector(`[data-tab="${active}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }, [active]);
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const p = packages.find((x) => x.id === active) || packages[0];
   if (!p) return null;
+  const rounds = groupRounds(p.itinerary);
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose} role="dialog" aria-modal="true" aria-label={p.name}>
-      <div className="bk-sheet max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
-        {p.imageUrl && <img src={img(p.imageUrl)} alt="" className="mb-3 aspect-[16/9] w-full rounded-2xl object-cover" />}
-        <h2 className="break-words text-xl font-extrabold text-[#0b4d2c]">{p.name}</h2>
-        {p.description && <p className="mt-1 text-sm text-[#374151]">{p.description}</p>}
-        <p className="mt-3 whitespace-pre-line break-words text-[15px] leading-relaxed text-[#1f2937]">{p.details}</p>
-        <button type="button" onClick={onClose} className="mt-5 min-h-tap w-full rounded-xl bg-[#0b5a33] font-semibold text-white">Close</button>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose} role="dialog" aria-modal="true" aria-label="Full details">
+      <div className="bk-sheet flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-[#fbf7ee] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2 bg-[#0b4d2c] px-4 py-3 text-white">
+          <h2 className="text-lg font-extrabold">Full Details</h2>
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
+        </div>
+        <div ref={tabsRef} role="tablist" className="flex gap-2 overflow-x-auto border-b border-[#eadfc6] bg-white px-3 py-2 [scrollbar-width:none]">
+          {packages.map((x) => (
+            <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={x.id === p.id} onClick={() => setActive(x.id)}
+                    className={`shrink-0 rounded-full px-3 py-2 text-left text-[13px] font-bold leading-tight ${x.id === p.id ? 'bg-[#0b5a33] text-white' : 'bg-[#f3ecdc] text-[#0b4d2c]'}`}>
+              {x.name.replace(/\s*Pass$/i, '')}
+            </button>
+          ))}
+        </div>
+        <div className="overflow-y-auto p-4" role="tabpanel">
+          {p.imageUrl && <img src={img(p.imageUrl)} alt="" className="mb-3 aspect-[16/9] w-full rounded-2xl object-cover" />}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="break-words text-xl font-extrabold text-[#0b4d2c]">{p.name}</h3>
+              {p.description && <p className="mt-0.5 break-words text-sm text-[#374151]">{p.description}</p>}
+            </div>
+            <span className="shrink-0"><PriceBlock p={p} /></span>
+          </div>
+          <h4 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[#8a7f6a]">Itinerary</h4>
+          {rounds.length === 0 ? (
+            <p className="mt-2 rounded-xl bg-white p-3 text-sm text-[#6b7280]">Itinerary jald hi update hogi.</p>
+          ) : (
+            <div className="mt-2 space-y-3">
+              {rounds.map((g, gi) => (
+                <section key={gi} className="rounded-2xl border border-[#eadfc6] bg-white p-3">
+                  {g.round && <p className="mb-2 inline-block rounded-full bg-[#f4e3ad] px-3 py-1 text-xs font-bold text-[#5c4510]">{g.round}</p>}
+                  <ol className="relative space-y-3 border-l-2 border-dashed border-[#c9a24b] pl-4">
+                    {g.stops.map((x, i) => (
+                      <li key={i} className="relative">
+                        <span className="absolute -left-[23px] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#0b5a33] shadow" aria-hidden />
+                        <p className="break-words text-[15px] font-semibold text-[#1f2937]">
+                          {x.place}{x.time && <span className="ml-2 whitespace-nowrap text-xs font-medium text-[#8a7f6a]">{x.time}</span>}
+                        </p>
+                        {x.note && <p className="break-words text-[13px] text-[#4b5563]">{x.note}</p>}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+            </div>
+          )}
+          {p.details && <p className="mt-4 whitespace-pre-line break-words text-[14px] leading-relaxed text-[#1f2937]">{p.details}</p>}
+        </div>
       </div>
     </div>
   );
@@ -202,11 +265,11 @@ function Downloads({ done }) {
             <Ticket className="h-4 w-4" aria-hidden /> All passes (PDF)
           </a>
         )}
-        {b.invoiceUrl && (
-          <a href={regApi.publicUrl(b.invoiceUrl)} className="inline-flex min-h-tap items-center justify-center gap-2 rounded-xl border border-[#c9a24b] bg-[#fdf6e6] px-4 font-semibold text-[#7a5f22]">
-            <FileText className="h-4 w-4" aria-hidden /> Invoice (PDF)
+        {(b.invoices?.length ? b.invoices : b.invoiceUrl ? [{ invoiceNo: null, url: b.invoiceUrl }] : []).map((inv, n, all) => (
+          <a key={inv.url} href={regApi.publicUrl(inv.url)} className="inline-flex min-h-tap items-center justify-center gap-2 rounded-xl border border-[#c9a24b] bg-[#fdf6e6] px-4 text-center font-semibold text-[#7a5f22]">
+            <FileText className="h-4 w-4 shrink-0" aria-hidden /> {all.length > 1 ? `Invoice ${n + 1} (PDF)` : 'Invoice (PDF)'}
           </a>
-        )}
+        ))}
       </div>
     </section>
   );
@@ -220,6 +283,8 @@ export default function RegisterPage() {
   const [selected, setSelected] = useState(null);
   const [sheet, setSheet] = useState(false);
   const [info, setInfo] = useState(null);
+  const closeInfo = useCallback(() => setInfo(null), []);
+  const [addOnNote, setAddOnNote] = useState(null);
   const [done, setDone] = useState(null);
   const [paying, setPaying] = useState(false);
   const { control, register, handleSubmit, setError, formState } = useForm({
@@ -284,9 +349,26 @@ export default function RegisterPage() {
       name: v.name.trim(), mobile: v.mobile, consent: true, photo: photo || undefined, website: '',
       packageIds: packages.length ? optionalIds(packages, sel).join(',') : undefined,
     }),
-    onSuccess: (res) => (res.paymentStatus === 'PENDING' && res.payment ? pay(res) : (setDone(res), setSheet(false))),
+    onSuccess: (res) => {
+      if (res.paymentStatus === 'PENDING' && res.payment) {
+        // Same number again: the passes join the existing booking and the registration fee is not charged twice.
+        if (packages.length && Number(res.amount) !== Number(amount)) {
+          setAddOnNote(`Is number ki booking pehle se hai — naye pass usi booking mein judenge. ${rupees(feeTotal)} registration dobara nahi lagega. Payable: ${rupees(res.amount)}`);
+        }
+        pay(res);
+      } else {
+        setDone(res);
+        setSheet(false);
+      }
+    },
     onError: (e) => {
       const fields = getFieldErrors(e);
+      if (fields.ownedPackageIds) {
+        // Passes this number already has: take them off and let the person pay for the rest.
+        const owned = String(fields.ownedPackageIds).split(',').map(Number);
+        setSelected((cur) => (cur || []).filter((id) => !owned.includes(id)));
+        delete fields.ownedPackageIds;
+      }
       Object.entries(fields).forEach(([k, msg]) => setError(k === 'packageIds' ? 'root' : k, { message: msg }));
       if (!Object.keys(fields).length) setError('root', { message: getErrorMessage(e) });
     },
@@ -337,6 +419,12 @@ export default function RegisterPage() {
     <Shell>
       <Hero f={f} />
       <div className="space-y-3 px-3 pt-4 sm:px-4">
+        {cards.length > 0 && (
+          <button type="button" onClick={() => setInfo(cards[0])}
+                  className="bk-tap mx-auto flex min-h-tap items-center gap-2 rounded-full border-2 border-[#c9a24b] bg-white px-5 text-[15px] font-bold text-[#0b4d2c] shadow-sm">
+            <ListChecks className="h-5 w-5 text-[#a8873d]" aria-hidden /> Full Details
+          </button>
+        )}
         {f.description && <Description text={f.description} />}
         {cards.map((p, i) => (
           <PassCard key={p.id} p={p} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
@@ -363,7 +451,7 @@ export default function RegisterPage() {
         )}
       </div>
 
-      <DetailsSheet p={info} onClose={() => setInfo(null)} />
+      {info && <FullDetails packages={cards} startId={info.id} onClose={closeInfo} />}
       {celebrate && <ComboCelebration discount={totals.comboDiscount} onClose={endCelebrate} />}
 
       {sheet && (
@@ -408,6 +496,7 @@ export default function RegisterPage() {
                           label={<span className="text-[#1f2937]">{f.consentText}{(f.hasTerms || f.hasPrivacy) && <> — I accept the {f.hasTerms && legalLink('terms', 'Terms & Conditions')}{f.hasTerms && f.hasPrivacy && ' and '}{f.hasPrivacy && legalLink('privacy', 'Privacy Policy')}.</>}</span>} />
               )} />
               <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+              {addOnNote && <Alert variant="info" title={addOnNote} />}
               {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}
               <Button type="submit" fullWidth size="lg" loading={submit.isPending || paying} className="!rounded-xl !bg-[#0b5a33] hover:!bg-[#0a4a2b]">
                 {amount > 0 ? `Pay ${rupees(amount)}` : 'Get my pass'}

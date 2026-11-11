@@ -24,6 +24,7 @@ public class RegistrationPaymentJob {
 
     private final RegistrationRepository repository;
     private final RegistrationService service;
+    private final in.codebasket.cbwa.common.service.registration.AddOnBookingService addOns;
 
     @Scheduled(fixedDelay = 180_000, initialDelay = 60_000)
     public void run() {
@@ -36,6 +37,11 @@ public class RegistrationPaymentJob {
         for (Registration r : repository.findTop50ByPaymentStatusAndRazorpayOrderIdIsNotNullAndUpdatedAtBetweenOrderByIdAsc(
                 PaymentStatus.PENDING, now.minus(Duration.ofHours(24)), now.minus(Duration.ofMinutes(2)))) {
             if (service.checkPayment(r) == PaymentStatus.PAID) {
+                paid++;
+            }
+        }
+        for (var o : addOns.pendingForCheck()) {
+            if (service.checkAddOnPayment(o)) {
                 paid++;
             }
         }
