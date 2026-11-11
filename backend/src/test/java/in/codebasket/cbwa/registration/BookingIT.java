@@ -284,7 +284,8 @@ class BookingIT extends AbstractIntegrationTest {
 
         // Same number adds Khaas: only Rs 3,000 (no fee again), same booking, second invoice.
         RZP.stubFor(post(urlEqualTo("/v1/orders")).willReturn(json("{\"id\":\"order_A2\",\"status\":\"created\"}")));
-        register("Shahid Husen", "9226926292", smm).andExpect(status().isCreated())
+        // (the free pass it already has is still ticked on the page: skipped, not refused)
+        register("Shahid Husen", "9226926292", hzs + "," + smm).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.uid").value(uid)).andExpect(jsonPath("$.data.amount").value("3000.00"))
                 .andExpect(jsonPath("$.data.payment.amount").value(300000));
         // A cheap old order or a short payment cannot complete it.

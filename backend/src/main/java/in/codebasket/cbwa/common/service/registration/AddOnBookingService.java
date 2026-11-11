@@ -80,7 +80,9 @@ public class AddOnBookingService {
                 throw AppException.field("packageIds", "One of the chosen packages is not available any more. Please refresh the page");
             }
         }
-        List<RegistrationPackage> already = optional.stream().filter(p -> chosen.contains(p.getId()) && owned.contains(p.getId())).toList();
+        // A free pass it already has (often still ticked on the page) is simply skipped; a paid one is refused by name.
+        List<RegistrationPackage> already = optional.stream()
+                .filter(p -> chosen.contains(p.getId()) && owned.contains(p.getId()) && p.getSalePrice().signum() > 0).toList();
         if (!already.isEmpty()) {
             throw new AppException(ErrorCode.VALIDATION_FAILED,
                     "Aap ye pass pehle hi le chuke hain: " + already.stream().map(RegistrationPackage::getName).collect(Collectors.joining(", ")),
@@ -90,7 +92,7 @@ public class AddOnBookingService {
                             + ". Inhe hata diya gaya hai, baaki ke liye dobara tap karein."),
                     new FieldErrorDto("ownedPackageIds", already.stream().map(p -> String.valueOf(p.getId())).collect(Collectors.joining(",")))));
         }
-        List<RegistrationPackage> picked = optional.stream().filter(p -> chosen.contains(p.getId())).toList();
+        List<RegistrationPackage> picked = optional.stream().filter(p -> chosen.contains(p.getId()) && !owned.contains(p.getId())).toList();
         if (picked.isEmpty()) {
             throw AppException.field("packageIds", "Koi naya pass chuniye");
         }
