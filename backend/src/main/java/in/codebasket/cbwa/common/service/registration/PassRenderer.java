@@ -340,8 +340,13 @@ public class PassRenderer {
                     Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234),
             "HFHU_3", new HfhuLayout("pass-designs/hfhu-pass-3.jpg",
                     Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234),
-            "HFHU_4", new HfhuLayout("pass-designs/hfhu-pass-4.jpg",
-                    Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234));
+            // PASS 4 has a two-line subtitle above, so its boxes sit a little lower.
+            "HFHU_4", new HfhuLayout("pass-designs/hfhu-pass-4.jpg", Map.of(
+                    "name", new double[] {0.0827, 0.6222, 0.544, 0.6498},
+                    "mobile", new double[] {0.0827, 0.6782, 0.544, 0.7022},
+                    "bookingNo", new double[] {0.0827, 0.7289, 0.544, 0.7529},
+                    "passNo", new double[] {0.0827, 0.7804, 0.544, 0.8062}),
+                    new double[] {0.6213, 0.6116, 0.9107, 0.7982}, new double[] {0.376, 0.8818, 0.624, 0.8996}));
 
     public static boolean isHfhuStyle(String style) {
         return style != null && HFHU.containsKey(style);
