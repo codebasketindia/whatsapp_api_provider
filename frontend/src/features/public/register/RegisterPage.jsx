@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, ChevronRight, Download, FileText, ListChecks, MessageCircle, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Download, FileText, ListChecks, MessageCircle, X } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { getErrorMessage, getFieldErrors } from '../../../api/axios';
 import { Alert, Button, Checkbox, FileUpload, Input, PhoneInput, Spinner, isIndianMobile } from '../../../components/ui';
@@ -54,11 +54,73 @@ const STYLES = `
   .bk-sheet { animation: bkSheet .3s cubic-bezier(.2,.8,.2,1) both; }
   @keyframes hfPop { 0% { transform: scale(.4); opacity:0 } 70% { transform: scale(1.1) } 100% { transform: scale(1); opacity:1 } }
   .hf-pop { animation: hfPop .6s cubic-bezier(.2,.8,.2,1) both; }
-  @media (prefers-reduced-motion: reduce) { .bk-up, .bk-sheet, .hf-pop { animation: none } .bk-tap { transition: none } }
+  .hf-app, .hf-app button, .hf-app a { -webkit-tap-highlight-color: transparent; }
+  .hf-app button { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  .hf-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  @keyframes hfSlideIn { from { transform: translateX(100%) } to { transform: none } }
+  .hf-slide { animation: hfSlideIn .28s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes hfBarUp { from { transform: translateY(110%) } to { transform: none } }
+  .hf-bar { animation: hfBarUp .25s cubic-bezier(.2,.8,.2,1) both; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .hf-safe-top { padding-top: env(safe-area-inset-top); }
+  @keyframes hfFade { from { opacity: 0 } to { opacity: 1 } }
+  .hf-fade { animation: hfFade .22s ease-out both; }
+  @media (max-width: 639px) {
+    .hf-frame { padding: 0 !important; background-image: none; }
+    .hf-panel { border-radius: 0 !important; border-width: 0; box-shadow: none; min-height: 100vh; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bk-up, .bk-sheet, .hf-pop, .hf-slide, .hf-bar { animation: none } .bk-tap { transition: none } }
 `;
 
 // Built-in /ziyarat/ pictures carry a version, so phones that cached an old reply for the same address load the new picture.
 const ASSET_VERSION = '2026-11-12';
+/** A light tap on phones that support vibration (Android); nothing elsewhere. */
+const haptic = (ms = 8) => {
+  try { navigator.vibrate?.(ms); } catch { /* not supported */ }
+};
+
+/** Green phone status bar while the booking page is open. */
+function useThemeColor(color) {
+  useEffect(() => {
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return undefined;
+    const old = m.getAttribute('content');
+    m.setAttribute('content', color);
+    return () => m.setAttribute('content', old);
+  }, [color]);
+}
+
+/** While an overlay is open, the phone's back button closes it (like an app screen) instead of leaving the page. */
+function useBackToClose(open, close) {
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (!open) return undefined;
+    const key = `hf-${Math.random().toString(36).slice(2)}`;
+    window.history.pushState({ hf: key }, '');
+    const onPop = () => closeRef.current();
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      if (window.history.state?.hf === key) window.history.back();
+    };
+  }, [open]);
+}
+
+/** Keeps the page behind an open modal from scrolling (iOS-safe: the body is pinned and restored). */
+function useLockBody(open) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const y = window.scrollY;
+    const b = document.body.style;
+    const prev = { position: b.position, top: b.top, width: b.width, overflow: b.overflow };
+    Object.assign(b, { position: 'fixed', top: `-${y}px`, width: '100%', overflow: 'hidden' });
+    return () => {
+      Object.assign(b, prev);
+      window.scrollTo(0, y);
+    };
+  }, [open]);
+}
+
 const img = (u) => {
   if (!u) return u;
   if (u.startsWith('/api/')) return regApi.publicUrl(u);
@@ -86,11 +148,11 @@ function LegalLinks({ slug, f }) {
   );
 }
 
-function Shell({ children, banner, footer = true, supportLine, legal }) {
+function Shell({ children, banner, footer = true, supportLine, legal, bottomSpace = false }) {
   return (
-    <div className="hf-frame min-h-screen px-1.5 py-1.5 sm:px-4 sm:py-4">
+    <div className="hf-frame hf-app min-h-screen px-1.5 py-1.5 sm:px-4 sm:py-4">
       <style>{STYLES}</style>
-      <div className="hf-panel mx-auto w-full max-w-xl overflow-hidden rounded-[26px] pb-5">
+      <div className={`hf-panel mx-auto w-full max-w-xl overflow-hidden rounded-[26px] ${bottomSpace ? 'pb-28' : 'pb-5'}`}>
         {banner && <img src={img(banner)} alt="" className="block h-auto w-full" />}
         {children}
         {footer && (
@@ -280,13 +342,26 @@ function FullDetails({ packages, startId, onClose }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  useBackToClose(true, onClose);
+  useLockBody(true);
+  const drag = useRef(null);
+  const [dy, setDy] = useState(0);
   const p = packages.find((x) => x.id === active) || packages[0];
   if (!p) return null;
   const rounds = groupRounds(p.itinerary);
+  const touch = {
+    onTouchStart: (e) => { drag.current = e.touches[0].clientY; },
+    onTouchMove: (e) => { if (drag.current != null) setDy(Math.max(0, e.touches[0].clientY - drag.current)); },
+    onTouchEnd: () => { if (dy > 90) onClose(); drag.current = null; setDy(0); },
+  };
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose} role="dialog" aria-modal="true" aria-label="Full details">
-      <div className="bk-sheet flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-[#fbf7ee] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex shrink-0 items-center justify-between gap-2 bg-[#0b4d2c] px-4 py-3 text-white">
+    <div className="hf-fade fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose} role="dialog" aria-modal="true" aria-label="Full details">
+      <div className="bk-sheet hf-app flex max-h-[94vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-[#fbf7ee] sm:rounded-3xl"
+           style={dy ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined} onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0 bg-[#0b4d2c] pt-2" {...touch}>
+          <span className="mx-auto block h-1.5 w-12 rounded-full bg-white/50" aria-hidden />
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-2 bg-[#0b4d2c] px-4 pb-3 pt-1 text-white" {...touch}>
           <h2 className="text-lg font-extrabold">Full Details</h2>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
         </div>
@@ -294,7 +369,7 @@ function FullDetails({ packages, startId, onClose }) {
           {packages.map((x, i) => {
             const on = x.id === p.id;
             return (
-              <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={on} onClick={() => setActive(x.id)}
+              <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={on} onClick={() => { haptic(); setActive(x.id); }}
                       className={`hf-serif flex min-h-[56px] items-center gap-2 rounded-xl border-2 px-2 py-1.5 text-left ${on ? 'border-[#0b5a33] bg-[#0b5a33] text-white shadow' : 'border-[#e2c77a] bg-[#fffaf0] text-[#0b3d23]'}`}>
                 <span className={`flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg leading-none ${on ? 'bg-white/15 text-[#f7dc8c]' : 'bg-[#f4e3ad] text-[#0b3d23]'}`}>
                   <span className="text-[8px] font-bold">PASS</span><span className="text-[17px] font-extrabold">{i + 1}</span>
@@ -304,7 +379,7 @@ function FullDetails({ packages, startId, onClose }) {
             );
           })}
         </div>
-        <div ref={panelRef} className="min-h-0 flex-1 overflow-y-auto p-4" role="tabpanel">
+        <div ref={panelRef} className="hf-scroll min-h-0 flex-1 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]" role="tabpanel">
           {p.imageUrl && <DetailsImage url={p.imageUrl} key={p.id} />}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -476,6 +551,21 @@ export default function RegisterPage() {
     wasCombo.current = comboNow;
   }, [comboNow, selected]);
   const endCelebrate = useCallback(() => setCelebrate(false), []);
+  useThemeColor('#0c5b31');
+  const closeSheet = useCallback(() => setSheet(false), []);
+  useBackToClose(sheet, closeSheet);
+  useLockBody(sheet);
+  // The page's own big Register button; while it is off screen a bar with the total and the button stays at the bottom.
+  const ctaRef = useRef(null);
+  const [ctaVisible, setCtaVisible] = useState(true);
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([e]) => setCtaVisible(e.isIntersecting), { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  });
+  const openSheet = () => { haptic(12); setSheet(true); };
 
   const pay = async (res) => {
     const p = res.payment;
@@ -578,14 +668,14 @@ export default function RegisterPage() {
   const comboOn = comboApplies(packages, sel, combo);
   const legal = (kind, label) => (f[{ terms: 'hasTerms', privacy: 'hasPrivacy', refund: 'hasRefund' }[kind]] ? legalLink(kind, label) : label);
   return (
-    <Shell banner={f.heroImageUrl} footer={false}>
+    <Shell banner={f.heroImageUrl} footer={false} bottomSpace={f.open && !sheet}>
       <Hero f={f} onFullDetails={cards.length ? () => setInfo(cards[0]) : null} />
       <div className="space-y-2.5 px-2 pt-3 sm:px-4">
         {f.description && <Description text={f.description} />}
         {cards.map((p, i) => (
-          <PassCard key={p.id} p={p} n={i + 1} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
+          <PassCard key={p.id} p={p} n={i + 1} index={i} on={sel.includes(p.id)} onToggle={() => { haptic(); setSelected(toggleId(sel, p.id)); }} onInfo={() => setInfo(p)} />
         ))}
-        {combo && <ComboCard combo={combo} on={comboOn} onToggle={() => setSelected(toggleCombo(packages, sel, combo))} />}
+        {combo && <ComboCard combo={combo} on={comboOn} onToggle={() => { haptic(14); setSelected(toggleCombo(packages, sel, combo)); }} />}
         {fees.map((p, i) => <FeeBox key={p.id} p={p} note={i === fees.length - 1 ? f.pageNote : null} />)}
         {!packages.length && f.feeAmount && <FeeBox p={{ salePrice: f.feeAmount, name: f.feeLabel || 'Registration fee' }} note={f.pageNote} />}
         {!fees.length && packages.length > 0 && f.pageNote && <p className="hf-serif break-words px-2 text-center text-[14px] italic text-[#374151]">{f.pageNote}</p>}
@@ -599,7 +689,7 @@ export default function RegisterPage() {
                 {totals.comboDiscount > 0 && <> · Combo Discount <b className="text-[#0b6b3a]">{rupees(totals.comboDiscount)}</b></>}
               </p>
             )}
-            <button type="button" onClick={() => setSheet(true)}
+            <button type="button" onClick={openSheet} ref={ctaRef}
                     className="hf-btn hf-serif bk-tap flex min-h-[66px] w-full items-center justify-center gap-3 rounded-full text-[26px] font-extrabold text-white sm:text-[34px]">
               <span className="hidden text-[#f3d27a] min-[380px]:inline" aria-hidden>—◇</span>{f.ctaLabel || 'Register'}<span className="hidden text-[#f3d27a] min-[380px]:inline" aria-hidden>◇—</span>
             </button>
@@ -615,15 +705,39 @@ export default function RegisterPage() {
       {info && <FullDetails packages={cards} startId={info.id} onClose={closeInfo} />}
       {celebrate && <ComboCelebration discount={totals.comboDiscount} onClose={endCelebrate} />}
 
+      {f.open && !sheet && !ctaVisible && (
+        <div className="hf-bar hf-app fixed inset-x-0 bottom-0 z-30">
+          <div className="mx-auto flex max-w-xl items-center gap-3 border-t-2 border-[#d9b347] bg-[#fdf8ec]/95 px-3 pt-2.5 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.35)] backdrop-blur">
+            <div className="hf-serif min-w-0 flex-1 leading-tight">
+              <p className="text-[12px] text-[#4b5563]">{packages.length ? `${picked.length} pass selected` : 'Registration'}</p>
+              <p className="text-[19px] font-extrabold text-[#0b3d23]">{amount > 0 ? rupees(amount) : 'FREE'}
+                {totals.comboDiscount > 0 && <span className="ml-1.5 align-middle text-[11px] font-bold text-[#0b6b3a]">−{rupees(totals.comboDiscount)} combo</span>}
+              </p>
+            </div>
+            <button type="button" onClick={openSheet} className="hf-btn hf-serif bk-tap min-h-[50px] shrink-0 rounded-full px-6 text-[18px] font-extrabold text-white">
+              {f.ctaLabel || 'Register'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {sheet && (
-        <div className="fixed inset-0 z-40 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Registration">
-          <div className="bk-sheet bk-form">
+        <div className="hf-scroll fixed inset-0 z-40 overflow-y-auto bg-[#fdf9ef]" role="dialog" aria-modal="true" aria-label="Registration">
+          <div className="hf-slide bk-form">
+            <div className="hf-app hf-safe-top sticky top-0 z-10 bg-gradient-to-b from-[#127040] to-[#0a4a2b] text-white shadow-md">
+              <div className="mx-auto flex h-14 max-w-xl items-center gap-2 px-2">
+                <button type="button" onClick={closeSheet} aria-label="Back" className="flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15">
+                  <ArrowLeft className="h-6 w-6" aria-hidden />
+                </button>
+                <p className="hf-serif min-w-0 flex-1 truncate text-[19px] font-extrabold">{f.ctaLabel || 'Register'}</p>
+                {packages.length > 0 && <span className="hf-serif shrink-0 rounded-full bg-[#f3d27a] px-3 py-1 text-[15px] font-extrabold text-[#0b3d23]">{amount > 0 ? rupees(amount) : 'FREE'}</span>}
+              </div>
+            </div>
             <Shell banner={subBanner(f.heroImageUrl)} footer={false}>
               <section className="hf-box hf-serif mx-3 mt-3 rounded-3xl p-4 sm:mx-4">
                 <div className="relative">
-                  <Ornament className="pr-12"><h2 className="px-1 text-[28px] font-extrabold leading-tight text-[#0b3d23] sm:text-[36px]">{f.ctaLabel || 'Register'}</h2></Ornament>
-                  <button type="button" onClick={() => setSheet(false)} aria-label="Close"
-                          className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#d9b65c] bg-[#fffaf0] text-[#0b3d23]"><X className="h-6 w-6" aria-hidden /></button>
+                  <Ornament><h2 className="px-1 text-[28px] font-extrabold leading-tight text-[#0b3d23] sm:text-[36px]">{f.ctaLabel || 'Register'}</h2></Ornament>
+
                 </div>
                 <p className="mt-1 text-center text-[15px] text-[#1f2937]">Apni details check karke payment karein.</p>
                 {packages.length > 0 && (
@@ -667,10 +781,12 @@ export default function RegisterPage() {
                   <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
                   {addOnNote && <Alert variant="info" title={addOnNote} />}
                   {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}
-                  <Button type="submit" fullWidth size="lg" loading={submit.isPending || paying}
-                          className="hf-btn hf-serif !min-h-[62px] !rounded-full !bg-transparent !text-[26px] !font-extrabold">
-                    {amount > 0 ? `Pay ${rupees(amount)}` : 'Get my pass'}
-                  </Button>
+                  <div className="hf-bar sticky bottom-0 z-10 -mx-4 bg-gradient-to-t from-[#fbf2de] via-[#fbf2de] to-transparent px-4 pt-4">
+                    <Button type="submit" fullWidth size="lg" loading={submit.isPending || paying} onClick={() => haptic(12)}
+                            className="hf-btn hf-serif !min-h-[62px] !rounded-full !bg-transparent !text-[26px] !font-extrabold">
+                      {amount > 0 ? `Pay ${rupees(amount)}` : 'Get my pass'}
+                    </Button>
+                  </div>
                 </form>
                 <div className="mt-4 text-center text-[14px] text-[#374151]">
                   <Ornament><span className="px-1">Secure payment • Razorpay</span></Ornament>

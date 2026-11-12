@@ -62,17 +62,21 @@ export default function ComboCelebration({ discount, onClose }) {
   const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   useEffect(() => {
     const t = setTimeout(onClose, 3200);
-    return () => clearTimeout(t);
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey); };
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-6" onClick={onClose} role="status" aria-live="polite">
+    <div className="hf-fade fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={onClose} role="status" aria-live="polite">
       {!reduce && <Confetti />}
       <div className="bk-sheet relative w-full max-w-xs rounded-3xl border-2 border-[#e2b443] bg-white p-5 text-center shadow-2xl">
         {reduce ? <PartyPopper className="mx-auto h-16 w-16 text-[#c9a24b]" aria-hidden /> : <Burst />}
-        <p className="text-2xl font-extrabold text-[#0b4d2c]">Congratulations!</p>
-        <p className="mt-1 break-words text-[15px] text-[#374151]">
+        <p className="hf-serif text-2xl font-extrabold text-[#0b4d2c]">Congratulations!</p>
+        <p className="hf-serif mt-1 break-words text-[15px] text-[#374151]">
           Combo select ho gaya{discount > 0 ? <> — aapko <b className="text-[#0b5a33]">{rupees(discount)}</b> ka Combo Discount mila</> : ''}.
         </p>
+        <button type="button" onClick={onClose}
+                className="hf-btn hf-serif mt-4 min-h-[48px] w-full rounded-full text-[17px] font-extrabold text-white">Theek hai</button>
       </div>
     </div>
   );
