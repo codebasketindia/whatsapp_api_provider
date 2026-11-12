@@ -64,7 +64,7 @@ const subBanner = (u) => (u && u.includes('banner-special-offer') ? u.replace('b
 /** Green lattice frame around an ivory panel with a gold border, as in the HFHU artwork. */
 function Shell({ children, banner, footer = true, supportLine }) {
   return (
-    <div className="hf-frame min-h-screen px-2 py-2 sm:px-4 sm:py-4">
+    <div className="hf-frame min-h-screen px-1.5 py-1.5 sm:px-4 sm:py-4">
       <style>{STYLES}</style>
       <div className="hf-panel mx-auto w-full max-w-xl overflow-hidden rounded-[26px] pb-5">
         {banner && <img src={img(banner)} alt="" className="block h-auto w-full" />}
@@ -95,12 +95,12 @@ function Ornament({ children, className = '' }) {
 
 /** Gold hexagon "PASS n". */
 function PassHex({ n, size = 'md' }) {
-  const s = size === 'sm' ? 'h-[50px] w-[44px]' : 'h-[64px] w-[56px]';
+  const s = size === 'xs' ? 'h-[42px] w-[36px]' : size === 'sm' ? 'h-[50px] w-[44px]' : 'h-[64px] w-[56px]';
   return (
     <span className={`hf-hex hf-serif inline-flex shrink-0 items-center justify-center p-[3px] ${s}`} aria-label={`Pass ${n}`}>
       <span className="flex h-full w-full flex-col items-center justify-center leading-none text-[#0b3d23]">
-        <span className={size === 'sm' ? 'text-[9px] font-bold' : 'text-[11px] font-bold'}>PASS</span>
-        <span className={size === 'sm' ? 'text-[20px] font-extrabold' : 'text-[28px] font-extrabold'}>{n}</span>
+        <span className={size === 'md' ? 'text-[11px] font-bold' : size === 'sm' ? 'text-[9px] font-bold' : 'text-[7.5px] font-bold'}>PASS</span>
+        <span className={size === 'md' ? 'text-[28px] font-extrabold' : size === 'sm' ? 'text-[20px] font-extrabold' : 'text-[17px] font-extrabold'}>{n}</span>
       </span>
     </span>
   );
@@ -116,7 +116,7 @@ function Hero({ f, onFullDetails }) {
         </div>
       )}
       <div className="px-3 pt-3 text-center">
-        <h1 className="hf-serif break-words text-[30px] font-extrabold leading-tight text-[#0b3d23] sm:text-[40px]">{f.pageHeading || f.title}</h1>
+        <h1 className="hf-serif whitespace-nowrap text-[clamp(18px,6.3vw,40px)] font-extrabold leading-tight tracking-[-0.01em] text-[#0b3d23]">{f.pageHeading || f.title}</h1>
         <Ornament className="mx-auto mt-1 max-w-sm" />
         {onFullDetails && (
           <button type="button" onClick={onFullDetails}
@@ -131,41 +131,39 @@ function Hero({ f, onFullDetails }) {
 
 function PriceBlock({ p }) {
   const free = Number(p.salePrice) === 0;
-  if (free) return <span className="hf-serif rounded-lg bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-3 py-1.5 text-[19px] font-extrabold tracking-wide text-white shadow sm:px-5 sm:text-[24px]">FREE</span>;
+  if (free) return <span className="hf-serif rounded-lg bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-2 py-1 text-[15px] font-extrabold tracking-wide text-white shadow min-[400px]:px-3 min-[400px]:text-[17px] sm:px-5 sm:text-[24px]">FREE</span>;
   return (
     <span className="hf-serif flex flex-col items-center gap-0.5">
-      <span className="rounded-md bg-[#f4e3ad] px-2 text-[11px] font-bold text-[#5c4510] sm:text-[13px]">PAID</span>
-      {Number(p.mrp) > Number(p.salePrice) && <span className="bk-strike text-[13px] font-bold text-[#5b4a2a] sm:text-[16px]">{rupees(p.mrp)}</span>}
-      <span className="bk-gold rounded-lg px-2 py-0.5 text-[18px] font-extrabold leading-tight sm:px-3 sm:text-[24px]">{rupees(p.salePrice)}</span>
+      <span className="rounded-md bg-[#f4e3ad] px-1.5 text-[10px] font-bold text-[#5c4510] sm:text-[13px]">PAID</span>
+      {Number(p.mrp) > Number(p.salePrice) && <span className="bk-strike text-[12px] font-bold text-[#5b4a2a] sm:text-[16px]">{rupees(p.mrp)}</span>}
+      <span className="bk-gold rounded-lg px-1.5 py-0.5 text-[15px] font-extrabold leading-tight min-[400px]:text-[17px] sm:px-3 sm:text-[24px]">{rupees(p.salePrice)}</span>
     </span>
   );
 }
 
 function PassCard({ p, n, on, onToggle, onInfo, index }) {
   return (
-    <div className={`hf-card bk-tap bk-up relative rounded-2xl p-2 sm:p-2.5 ${on ? 'ring-[3px] ring-[#0b5a33]' : ''}`} style={{ animationDelay: `${index * 60}ms` }}>
+    <div className={`hf-card bk-tap bk-up relative flex items-stretch rounded-2xl ${on ? 'ring-[3px] ring-[#0b5a33]' : ''}`} style={{ animationDelay: `${index * 60}ms` }}>
       <button type="button" onClick={onToggle} aria-pressed={on}
-              className="grid w-full grid-cols-[78px_minmax(0,1fr)_auto] items-center gap-2 text-left sm:grid-cols-[120px_auto_minmax(0,1fr)_auto] sm:gap-3">
+              className="grid min-w-0 flex-1 grid-cols-[54px_auto_minmax(0,1fr)_auto] items-center gap-1.5 py-1.5 pl-1.5 text-left min-[400px]:grid-cols-[72px_auto_minmax(0,1fr)_auto] sm:grid-cols-[120px_auto_minmax(0,1fr)_auto] sm:gap-3 sm:py-2.5 sm:pl-2.5">
         <span className="relative block">
-          {p.imageUrl ? <img src={img(p.imageUrl)} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy" />
-            : <span className="flex aspect-[4/3] w-full items-center justify-center rounded-xl bg-[#f4ecd9] text-[#a8873d]"><PackageIcon name={p.icon} className="h-8 w-8" /></span>}
-          <span className={`absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white shadow ${on ? 'bg-[#0b5a33] text-white' : 'bg-white/90 text-transparent'}`}>
-            <Check className="h-3.5 w-3.5" aria-hidden />
+          {p.imageUrl ? <img src={img(p.imageUrl)} alt="" className="aspect-[4/3] w-full rounded-lg object-cover sm:rounded-xl" loading="lazy" />
+            : <span className="flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-[#f4ecd9] text-[#a8873d]"><PackageIcon name={p.icon} className="h-7 w-7" /></span>}
+          <span className={`absolute -left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white shadow ${on ? 'bg-[#0b5a33] text-white' : 'bg-white/90 text-transparent'}`}>
+            <Check className="h-3 w-3" aria-hidden />
           </span>
-          <span className="absolute -bottom-2 -right-2 sm:hidden"><PassHex n={n} size="sm" /></span>
         </span>
+        <span className="border-r border-[#e2c77a] pr-1.5 sm:hidden"><PassHex n={n} size="xs" /></span>
         <span className="hidden border-r border-[#e2c77a] pr-3 sm:block"><PassHex n={n} /></span>
-        <span className="min-w-0 pl-1 sm:pl-0">
-          <span className="hf-serif block break-words text-[15.5px] font-extrabold leading-snug text-[#0b3d23] sm:text-[20px]">{p.name}</span>
-          {p.description && <span className="hf-serif mt-0.5 block break-words text-[12.5px] leading-snug text-[#374151] sm:text-[14px]">{p.description}</span>}
+        <span className="min-w-0">
+          <span className="hf-serif block break-words text-[14px] font-extrabold leading-tight text-[#0b3d23] min-[400px]:text-[15.5px] sm:text-[20px]">{p.name}</span>
+          {p.description && <span className="hf-serif mt-0.5 block break-words text-[11.5px] leading-snug text-[#374151] min-[400px]:text-[12.5px] sm:text-[14px]">{p.description}</span>}
         </span>
-        <span className="flex items-center gap-1 border-l border-[#e2c77a] pl-2">
-          <PriceBlock p={p} />
-          <ChevronRight className="h-5 w-5 shrink-0 text-[#0b3d23]" aria-hidden />
-        </span>
+        <span className="flex items-center border-l border-[#e2c77a] pl-1.5 sm:pl-2"><PriceBlock p={p} /></span>
       </button>
-      <button type="button" onClick={onInfo} className="hf-serif mt-1 inline-flex min-h-[30px] items-center gap-1 px-1 text-xs font-bold text-[#0b5a33]">
-        View full details <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+      <button type="button" onClick={onInfo} aria-label={`${p.name}: full details`}
+              className="flex w-7 shrink-0 items-center justify-center rounded-r-2xl text-[#0b3d23] sm:w-10">
+        <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
       </button>
     </div>
   );
@@ -547,7 +545,7 @@ export default function RegisterPage() {
   return (
     <Shell banner={f.heroImageUrl} footer={false}>
       <Hero f={f} onFullDetails={cards.length ? () => setInfo(cards[0]) : null} />
-      <div className="space-y-2.5 px-2.5 pt-3 sm:px-4">
+      <div className="space-y-2.5 px-2 pt-3 sm:px-4">
         {f.description && <Description text={f.description} />}
         {cards.map((p, i) => (
           <PassCard key={p.id} p={p} n={i + 1} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
