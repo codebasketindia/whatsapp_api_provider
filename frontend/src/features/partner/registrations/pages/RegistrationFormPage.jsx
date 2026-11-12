@@ -21,7 +21,7 @@ const EMPTY = {
   title: '', description: '', slug: '', senderId: '', status: 'ACTIVE', closesAt: '', maxRegistrations: '',
   consentText: '', successMessage: '', collectPhoto: false, passEnabled: true, passDesignFile: null, passLayout: HARMAIN_LAYOUT,
   feeAmount: '', feeLabel: '', packages: [], termsText: '', privacyText: '',
-  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '', passSupportLine: '', shareTitle: '', shareDescription: '', shareImageUrl: '',
+  heroImageUrl: '', pageHeading: '', pageNote: '', ctaLabel: '', comboTitle: '', comboSubtitle: '', comboCodes: '', comboMrp: '', comboPrice: '', comboValidUntil: '', invoiceName: '', passSupportLine: '', shareTitle: '', shareDescription: '', shareImageUrl: '', invoiceStyle: '', invoiceContact: '',
   passPrefix: 'PASS', passTemplateId: null, passTemplateBody: [], passCaption: '', contactGroupId: '', contactTags: [], followUps: [],
 };
 
@@ -47,6 +47,7 @@ const fromDto = (f) => ({
   invoiceName: f.invoiceName || '',
   passSupportLine: f.passSupportLine || '',
   shareTitle: f.shareTitle || '', shareDescription: f.shareDescription || '', shareImageUrl: f.shareImageUrl || '',
+  invoiceStyle: f.invoiceStyle || '', invoiceContact: f.invoiceContact || '',
 });
 
 function toBody(v) {
@@ -85,6 +86,7 @@ function toBody(v) {
     passSupportLine: v.passSupportLine?.trim() || null,
     shareTitle: v.shareTitle?.trim() || null, shareDescription: v.shareDescription?.trim() || null,
     shareImageUrl: v.shareImageUrl?.trim() || null,
+    invoiceStyle: v.invoiceStyle || null, invoiceContact: v.invoiceContact?.trim() || null,
   };
 }
 

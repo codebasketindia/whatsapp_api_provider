@@ -139,7 +139,7 @@ public class RegistrationService {
                                 boolean collectPhoto, boolean passEnabled, boolean open, String closedReason,
                                 java.math.BigDecimal feeAmount, String feeLabel, List<BookingService.PackageView> packages,
                                 boolean hasTerms, boolean hasPrivacy, String heroImageUrl, String pageHeading, String pageNote,
-                                String ctaLabel, BookingService.ComboView combo) {
+                                String ctaLabel, BookingService.ComboView combo, String supportLine) {
     }
 
     public record LegalDto(String formTitle, String businessName, String title, String text) {
@@ -172,7 +172,7 @@ public class RegistrationService {
                 f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed,
                 packages.isEmpty() && paid(f) ? f.getFeeAmount() : null, f.getFeeLabel(), packages,
                 f.getTermsText() != null && !f.getTermsText().isBlank(), f.getPrivacyText() != null && !f.getPrivacyText().isBlank(),
-                f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(), f.getCtaLabel(), booking.combo(f));
+                f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(), f.getCtaLabel(), booking.combo(f), f.getPassSupportLine());
     }
 
     /** PR5: terms or privacy text of a link, shown on its own page. */

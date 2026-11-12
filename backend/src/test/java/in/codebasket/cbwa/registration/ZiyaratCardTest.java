@@ -34,4 +34,21 @@ class ZiyaratCardTest {
             Files.write(Path.of("target/ziyarat/" + title.length() + ".jpg"), jpg);
         }
     }
+
+    @Test
+    void hfhuPassesRenderAndQrScans() throws Exception {
+        String link = "https://sms.codebasket.in/v/77.AbCdEfGhIjKlMnOpQrStUv";
+        PassRenderer renderer = new PassRenderer();
+        for (String style : new String[] {"HFHU_1", "HFHU_2", "HFHU_3", "HFHU_4"}) {
+            byte[] jpg = renderer.renderHfhuPass(style, new PassRenderer.TicketData("HFHU", "Ziyarat Passes for HAJJ 2027", "x",
+                    "Shahid Husen", "+91 92269 26292", "HZ27-000010", "HZ27-000010-SMM", link));
+            BufferedImage img = ImageIO.read(new ByteArrayInputStream(jpg));
+            assertThat(img.getWidth()).isEqualTo(1500);
+            BufferedImage qr = img.getSubimage(880, 1290, 520, 560);
+            String read = new MultiFormatReader().decode(new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(qr)))).getText();
+            assertThat(read).isEqualTo(link);
+            Files.createDirectories(Path.of("target/ziyarat"));
+            Files.write(Path.of("target/ziyarat/" + style + ".jpg"), jpg);
+        }
+    }
 }

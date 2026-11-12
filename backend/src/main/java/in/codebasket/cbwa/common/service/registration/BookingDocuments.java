@@ -33,7 +33,12 @@ public class BookingDocuments {
     private static final Color GOLD = new Color(0xC9, 0xA2, 0x4B);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a").withZone(ZoneId.of("Asia/Kolkata"));
 
+    private final HfhuInvoiceRenderer hfhu = new HfhuInvoiceRenderer();
+
     public byte[] invoice(Partner partner, RegistrationForm form, Registration r, List<RegistrationItem> items) {
+        if ("HFHU".equals(form.getInvoiceStyle())) {
+            return hfhuInvoice(partner, form, r, items);
+        }
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
         PdfWriter.getInstance(doc, out);
@@ -123,6 +128,29 @@ public class BookingDocuments {
         doc.add(new Paragraph("This is a computer-generated invoice and does not need a signature.", small));
         doc.close();
         return out.toByteArray();
+    }
+
+    /** HFHU artwork invoice: one page drawn as an image, the PDF page sized to it. */
+    private byte[] hfhuInvoice(Partner partner, RegistrationForm form, Registration r, List<RegistrationItem> items) {
+        try {
+            java.awt.image.BufferedImage page = hfhu.render(partner, form, r, items);
+            ByteArrayOutputStream jpg = new ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(page, "jpg", jpg);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Rectangle size = new Rectangle(595, 595f * HfhuInvoiceRenderer.H / HfhuInvoiceRenderer.W);
+            Document doc = new Document(size, 0, 0, 0, 0);
+            PdfWriter.getInstance(doc, out);
+            doc.addTitle("Invoice " + r.getInvoiceNo());
+            doc.open();
+            Image img = Image.getInstance(jpg.toByteArray());
+            img.scaleAbsolute(size.getWidth(), size.getHeight());
+            img.setAbsolutePosition(0, 0);
+            doc.add(img);
+            doc.close();
+            return out.toByteArray();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Invoice could not be drawn", e);
+        }
     }
 
     /** One page per pass image, for printing. */

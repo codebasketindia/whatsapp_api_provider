@@ -322,6 +322,75 @@ public class PassRenderer {
         return jpeg(img);
     }
 
+    /** HFHU pass artwork (1500 x 2250): value boxes and QR box as fractions of the image (x0, y0, x1, y1). */
+    private record HfhuLayout(String file, Map<String, double[]> fields, double[] qr, double[] pill) {
+    }
+
+    private static final double[] F_NAME = {0.0827, 0.6116, 0.544, 0.64}, F_MOBILE = {0.0827, 0.6711, 0.544, 0.6987},
+            F_BOOKING = {0.0827, 0.728, 0.544, 0.7547}, F_PASS = {0.0827, 0.7831, 0.544, 0.8089},
+            QR_234 = {0.6227, 0.608, 0.9107, 0.8}, PILL_234 = {0.376, 0.88, 0.624, 0.8978};
+
+    private static final Map<String, HfhuLayout> HFHU = Map.of(
+            "HFHU_1", new HfhuLayout("pass-designs/hfhu-pass-1.jpg", Map.of(
+                    "name", new double[] {0.084, 0.6126, 0.543, 0.6478},
+                    "mobile", new double[] {0.084, 0.6888, 0.543, 0.7214},
+                    "passNo", new double[] {0.084, 0.7624, 0.543, 0.7962}),
+                    new double[] {0.625, 0.6022, 0.9082, 0.7891}, new double[] {0.3711, 0.8802, 0.625, 0.8984}),
+            "HFHU_2", new HfhuLayout("pass-designs/hfhu-pass-2.jpg",
+                    Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234),
+            "HFHU_3", new HfhuLayout("pass-designs/hfhu-pass-3.jpg",
+                    Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234),
+            "HFHU_4", new HfhuLayout("pass-designs/hfhu-pass-4.jpg",
+                    Map.of("name", F_NAME, "mobile", F_MOBILE, "bookingNo", F_BOOKING, "passNo", F_PASS), QR_234, PILL_234));
+
+    public static boolean isHfhuStyle(String style) {
+        return style != null && HFHU.containsKey(style);
+    }
+
+    /** HFHU pass (PASS 1-4 artwork): name, mobile, booking no. (where the design has it), pass id and the QR code. */
+    public byte[] renderHfhuPass(String style, TicketData t) {
+        HfhuLayout l = HFHU.get(style);
+        BufferedImage bg = image(resource(l.file()));
+        int w = bg.getWidth(), h = bg.getHeight();
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.drawImage(bg, 0, 0, null);
+            Map<String, String> values = Map.of("name", nz(t.name()), "mobile", nz(t.mobile()), "bookingNo", nz(t.bookingNo()),
+                    "passNo", nz(t.passNo()));
+            g.setColor(new Color(0x14231B));
+            for (var e : l.fields().entrySet()) {
+                double[] b = e.getValue();
+                String v = values.getOrDefault(e.getKey(), "");
+                int x = (int) (b[0] * w) + (int) (0.018 * w), boxH = (int) ((b[3] - b[1]) * h);
+                int maxW = (int) ((b[2] - b[0]) * w) - (int) (0.03 * w);
+                Font f = (canShow(serifFont, v) ? serifFont : fontFor(v)).deriveFont(boxH * 0.72f);
+                while (g.getFontMetrics(f).stringWidth(v) > maxW && f.getSize2D() > 14) {
+                    f = f.deriveFont(f.getSize2D() - 1);
+                }
+                g.setFont(f);
+                var fm = g.getFontMetrics();
+                int y = (int) (b[1] * h) + (boxH + fm.getAscent() - fm.getDescent()) / 2;
+                g.drawString(v, x, y);
+            }
+            double[] q = l.qr();
+            int qx = (int) (q[0] * w), qy = (int) (q[1] * h), qs = Math.min((int) ((q[2] - q[0]) * w), (int) ((q[3] - q[1]) * h));
+            int pad = (int) (qs * 0.04);
+            g.drawImage(qr(t.qrText(), qs - 2 * pad), qx + pad, qy + pad, null);
+            double[] p = l.pill();
+            g.setColor(new Color(0xF3D27A));
+            int pillH = (int) ((p[3] - p[1]) * h);
+            centre(g, "HAJJ 2027", (int) ((p[0] + p[2]) / 2 * w), (int) (p[1] * h) + (int) (pillH * 0.82), (int) ((p[2] - p[0]) * w), pillH * 0.9f);
+        } finally {
+            g.dispose();
+        }
+        return jpeg(img);
+    }
+
     private static byte[] resource(String path) {
         try (InputStream in = new ClassPathResource(path).getInputStream()) {
             return in.readAllBytes();

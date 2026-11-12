@@ -1,4 +1,4 @@
-import { Card, Input } from '../../../../components/ui';
+import { Card, Input, Select } from '../../../../components/ui';
 
 /** Booking page look: banner, heading, note, button text and the combo offer (all optional). */
 export default function PageSettingsCard({ v, set, errors = {} }) {
@@ -21,6 +21,9 @@ export default function PageSettingsCard({ v, set, errors = {} }) {
         {f('comboPrice', 'Combo price (₹)', { type: 'number', min: 0 })}
         {f('invoiceName', 'Name on invoices', { maxLength: 160, placeholder: 'Your business name', hint: 'Blank = your business name from the profile.', className: 'md:col-span-2' })}
         {f('passSupportLine', 'Line at the bottom of Ziyarat-card passes', { maxLength: 120, placeholder: 'Emergency Support : +966590550490', className: 'md:col-span-2' })}
+        <Select label="Invoice design" value={v.invoiceStyle} onChange={(e) => set({ invoiceStyle: e.target.value })}
+                options={[{ value: '', label: 'Standard' }, { value: 'HFHU', label: 'HFHU (green & gold artwork)' }]} />
+        {f('invoiceContact', 'Invoice contact line', { maxLength: 160, placeholder: 'Office: +91 98xxxxxxxx' })}
         <p className="md:col-span-2 mt-2 text-sm font-semibold">Link preview (WhatsApp, Facebook, Telegram)</p>
         {f('shareTitle', 'Preview title', { maxLength: 160, placeholder: 'Har Fard Hajj Umrah' })}
         {f('shareImageUrl', 'Preview image URL', { maxLength: 500, placeholder: '/ziyarat/share-hajj-2027.jpg', hint: 'Best size 1200 x 630.' })}

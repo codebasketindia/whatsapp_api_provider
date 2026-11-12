@@ -92,7 +92,7 @@ public class RegistrationFormService {
                           List<PackageDto> packages, String termsText, String privacyText, String heroImageUrl, String pageHeading,
                           String pageNote, String ctaLabel, String comboTitle, String comboSubtitle, String comboCodes,
                           java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil, String invoiceName, String passSupportLine, String shareTitle,
-                          String shareDescription, String shareImageUrl) {
+                          String shareDescription, String shareImageUrl, String invoiceStyle, String invoiceContact) {
     }
 
     public record FormRequest(@NotBlank @Size(max = 160) String title, @Size(max = 2000) String description,
@@ -115,7 +115,8 @@ public class RegistrationFormService {
                               @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboPrice, Instant comboValidUntil,
                               @Size(max = 160) String invoiceName, @Size(max = 120) String passSupportLine,
                               @Size(max = 160) String shareTitle, @Size(max = 300) String shareDescription,
-                              @Size(max = 500) String shareImageUrl) {
+                              @Size(max = 500) String shareImageUrl,
+                              @Pattern(regexp = "HFHU", message = "HFHU or empty") String invoiceStyle, @Size(max = 160) String invoiceContact) {
     }
 
     public record PreviewRequest(String passDesign, String passDesignFileUid, PassLayout passLayout, String name, String mobile,
@@ -140,7 +141,7 @@ public class RegistrationFormService {
                                  @NotNull @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.DecimalMax("500000") java.math.BigDecimal salePrice,
                                  Boolean mandatory, Boolean active, Integer sortOrder, @Size(max = 160) String passTitle, String passDesignFileUid,
                                  @Size(max = 500) String imageUrl, Boolean issuePass,
-                                 @Pattern(regexp = "TICKET|FORM_DESIGN|ZIYARAT_CARD", message = "TICKET, FORM_DESIGN or ZIYARAT_CARD") String passStyle,
+                                 @Pattern(regexp = "TICKET|FORM_DESIGN|ZIYARAT_CARD|HFHU_[1-4]", message = "TICKET, FORM_DESIGN, ZIYARAT_CARD or HFHU_1-4") String passStyle,
                                  @Size(max = 60) List<@Valid ItineraryStop> itinerary) {
     }
 
@@ -480,6 +481,8 @@ public class RegistrationFormService {
         f.setShareTitle(trimToNull(req.shareTitle()));
         f.setShareDescription(trimToNull(req.shareDescription()));
         f.setShareImageUrl(safeUrl(req.shareImageUrl(), "shareImageUrl"));
+        f.setInvoiceStyle(trimToNull(req.invoiceStyle()));
+        f.setInvoiceContact(trimToNull(req.invoiceContact()));
         if (f.getComboCodes() != null && f.getComboPrice() == null) {
             throw AppException.field("comboPrice", "Enter the combo price");
         }
@@ -553,7 +556,7 @@ public class RegistrationFormService {
                 packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
                 f.getCtaLabel(), f.getComboTitle(), f.getComboSubtitle(), f.getComboCodes(), f.getComboMrp(), f.getComboPrice(),
                 f.getComboValidUntil(), f.getInvoiceName(), f.getPassSupportLine(),
-                f.getShareTitle(), f.getShareDescription(), f.getShareImageUrl());
+                f.getShareTitle(), f.getShareDescription(), f.getShareImageUrl(), f.getInvoiceStyle(), f.getInvoiceContact());
     }
 
     private List<PackageDto> packageDtos(RegistrationForm f) {

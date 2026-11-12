@@ -102,7 +102,7 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
         <Input className="md:col-span-2" label="Card image URL (optional)" maxLength={500} value={p.imageUrl} placeholder="/ziyarat/makkah.jpg or https://…" error={err('imageUrl')}
                hint="Used when no image is uploaded." onChange={(e) => set({ imageUrl: e.target.value })} />
         <Select label="Pass style" value={p.passStyle} onChange={(e) => set({ passStyle: e.target.value })}
-                options={[{ value: 'TICKET', label: 'Ticket pass' }, { value: 'FORM_DESIGN', label: 'Link pass design' }, { value: 'ZIYARAT_CARD', label: 'Ziyarat card (green & gold)' }]} />
+                options={[{ value: 'TICKET', label: 'Ticket pass' }, { value: 'FORM_DESIGN', label: 'Link pass design' }, { value: 'ZIYARAT_CARD', label: 'Ziyarat card (green & gold)' }, { value: 'HFHU_1', label: 'HFHU PASS 1 (Show pass)' }, { value: 'HFHU_2', label: 'HFHU PASS 2 (Khaas)' }, { value: 'HFHU_3', label: 'HFHU PASS 3 (Mazeed)' }, { value: 'HFHU_4', label: 'HFHU PASS 4 (Taif-Jeddah-Badr)' }]} />
         <Textarea className="md:col-span-4" label="Full details (shown under “View Full Details”)" rows={3} maxLength={8000} value={p.details} onChange={(e) => set({ details: e.target.value })} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4">

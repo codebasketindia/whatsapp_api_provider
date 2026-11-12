@@ -130,4 +130,10 @@ public class RegistrationForm extends AuditableEntity {
     private String shareTitle;
     private String shareDescription;
     private String shareImageUrl;
+
+    /** null = standard invoice; HFHU = the HFHU artwork invoice. */
+    private String invoiceStyle;
+
+    /** Contact line on the invoice header, e.g. "Office: +91 98xxxxxxx". */
+    private String invoiceContact;
 }

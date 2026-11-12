@@ -203,6 +203,11 @@ public class BookingService {
     private byte[] renderItemPass(RegistrationForm f, Registration r, RegistrationItem it, RegistrationPackage p, Partner partner) {
         String qr = qrUrl(it, r);
         String mobile = RegistrationService.formatMobile(r.getPhone());
+        if (p != null && PassRenderer.isHfhuStyle(p.getPassStyle())) {
+            return renderer.renderHfhuPass(p.getPassStyle(), new PassRenderer.TicketData(partner.getBusinessName(), f.getTitle(),
+                    p.getPassTitle() != null ? p.getPassTitle() : passTitle(it.getName()), r.getName(), mobile, r.getPassNo(),
+                    it.getPassNo(), qr, f.getPassSupportLine()));
+        }
         if (p != null && "ZIYARAT_CARD".equals(p.getPassStyle())) {
             return renderer.renderZiyaratCard(new PassRenderer.TicketData(partner.getBusinessName(), f.getTitle(),
                     p.getPassTitle() != null ? p.getPassTitle() : passTitle(it.getName()), r.getName(), mobile, r.getPassNo(),

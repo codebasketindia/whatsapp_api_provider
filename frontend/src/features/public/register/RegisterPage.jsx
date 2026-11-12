@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bus, Check, ChevronRight, Download, FileText, ListChecks, MessageCircle, QrCode, ShieldCheck, Ticket, X } from 'lucide-react';
+import { Check, ChevronRight, Download, FileText, ListChecks, MessageCircle, X } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { getErrorMessage, getFieldErrors } from '../../../api/axios';
 import { Alert, Button, Checkbox, FileUpload, Input, PhoneInput, Spinner, isIndianMobile } from '../../../components/ui';
@@ -12,7 +12,6 @@ import { openCheckout } from '../../../lib/razorpay';
 import { passStatusText } from './registerHelpers';
 import { comboApplies, computeTotals, optionalIds, rupees, toggleCombo, toggleId } from './bookingHelpers';
 import PackageIcon from './PackageIcon';
-import SuccessAnimation from './SuccessAnimation';
 import ComboCelebration from './ComboCelebration';
 
 const schema = z.object({
@@ -21,17 +20,30 @@ const schema = z.object({
   consent: z.literal(true, { errorMap: () => ({ message: 'Please accept to continue' }) }),
 });
 
-// HFHU look: ivory page, deep green and gold. Every text wraps (no truncation) so it reads fully on phones.
+// HFHU look (booking page, register form, confirmation): green lattice frame, ivory panel with a gold border, serif
+// headings, gold "PASS n" hexagons. Every text wraps (no truncation) so it reads fully on phones.
+const LATTICE = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><rect width="44" height="44" fill="#0c5b31"/>'
+  + '<g fill="none" stroke="#d9b347" stroke-width="2.2"><path d="M22 3 L28 16 L41 22 L28 28 L22 41 L16 28 L3 22 L16 16 Z"/>'
+  + '<path d="M0 0 L8 8 M44 0 L36 8 M0 44 L8 36 M44 44 L36 36"/><rect x="15" y="15" width="14" height="14" transform="rotate(45 22 22)"/></g></svg>',
+)}")`;
 const STYLES = `
-  .bk-page { background: linear-gradient(180deg, #fbf7ee 0%, #f8f1e2 100%); color: #1f2937; }
-  .bk-card { background: #ffffff; border: 1px solid #eadfc6; box-shadow: 0 8px 24px -14px rgba(11,77,44,.28); }
-  .bk-gold { background: linear-gradient(180deg, #f7dc8c 0%, #e2b443 100%); color: #3b2a05; }
-  .bk-green { background: linear-gradient(135deg, #0b5a33 0%, #0a4a2b 100%); }
-  .bk-form input, .bk-form select, .bk-form .field-base { background:#fffdf8 !important; color:#1f2937 !important; border-color:#e2d6bb !important; }
-  .bk-form label, .bk-form .label-base { color:#0b4d2c !important; }
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,600;0,700;0,800;1,600&display=swap');
+  .hf-frame { background-color:#0c5b31; background-image:${LATTICE}; background-size:44px 44px; color:#1f2937; }
+  .hf-panel { background: linear-gradient(180deg,#fdf9ef 0%,#f8f0dd 100%); border:3px solid #cfa43f; box-shadow: inset 0 0 0 3px #fff6dc, inset 0 0 0 5px #e7c873, 0 10px 30px -10px rgba(0,0,0,.45); }
+  .hf-serif { font-family: 'Noto Serif', Georgia, 'Times New Roman', serif; }
+  .hf-card { background: linear-gradient(180deg,#fffdf6,#fbf4e3); border:1.5px solid #e2c77a; box-shadow: 0 6px 14px -10px rgba(91,69,16,.55); }
+  .hf-box { background:#fffaf0; border:2px solid #d9b65c; box-shadow: inset 0 0 0 2px #fff7e2; }
+  .bk-gold { background: linear-gradient(180deg,#fbe39a 0%,#e4b444 100%); color:#3b2a05; box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 6px -2px rgba(91,69,16,.6); }
+  .bk-green { background: linear-gradient(180deg,#127040 0%,#0a4a2b 100%); }
+  .hf-btn { background: linear-gradient(180deg,#147545 0%,#0a4a2b 100%); border:3px solid #d9b347; box-shadow: inset 0 0 0 2px #0a4a2b, 0 8px 18px -8px rgba(10,74,43,.8); }
+  .hf-hex { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: linear-gradient(160deg,#f6d77d,#b8892c); }
+  .hf-hex > span { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: linear-gradient(180deg,#fffaf0,#f7ead0); }
+  .bk-form input, .bk-form select, .bk-form .field-base { background:#fffdf7 !important; color:#1f2937 !important; border:1.5px solid #d9b65c !important; border-radius:12px !important; font-family:'Noto Serif', Georgia, serif; font-size:17px; }
+  .bk-form label, .bk-form .label-base { color:#0b4d2c !important; font-family:'Noto Serif', Georgia, serif; font-weight:700; font-size:16px; }
   .bk-form .text-muted { color:#6b7280 !important; }
   .bk-form .text-ink { color:#1f2937 !important; }
-  .bk-form .bg-surface-2 { background:#f3ecdc !important; color:#1f2937 !important; }
+  .bk-form .bg-surface-2 { background:#f6ecd4 !important; color:#1f2937 !important; font-weight:700; }
   .bk-strike { position: relative; display: inline-block; }
   .bk-strike::after { content: ''; position: absolute; left: -4%; right: -4%; top: 52%; height: 2px; background: #d23b2f; transform: rotate(-8deg); }
   @keyframes bkUp { from { opacity:0; transform: translateY(12px) } to { opacity:1; transform:none } }
@@ -40,39 +52,78 @@ const STYLES = `
   .bk-tap:active { transform: scale(.985); }
   @keyframes bkSheet { from { transform: translateY(100%) } to { transform: none } }
   .bk-sheet { animation: bkSheet .3s cubic-bezier(.2,.8,.2,1) both; }
-  @media (prefers-reduced-motion: reduce) { .bk-up, .bk-sheet { animation: none } .bk-tap { transition: none } }
+  @keyframes hfPop { 0% { transform: scale(.4); opacity:0 } 70% { transform: scale(1.1) } 100% { transform: scale(1); opacity:1 } }
+  .hf-pop { animation: hfPop .6s cubic-bezier(.2,.8,.2,1) both; }
+  @media (prefers-reduced-motion: reduce) { .bk-up, .bk-sheet, .hf-pop { animation: none } .bk-tap { transition: none } }
 `;
 
 const img = (u) => (u && u.startsWith('/api/') ? regApi.publicUrl(u) : u);
+/** The register form and confirmation use the plain "HAJJ 2027" banner of the same artwork. */
+const subBanner = (u) => (u && u.includes('banner-special-offer') ? u.replace('banner-special-offer', 'banner-hajj-2027') : u);
 
-function Shell({ children }) {
+/** Green lattice frame around an ivory panel with a gold border, as in the HFHU artwork. */
+function Shell({ children, banner, footer = true, supportLine }) {
   return (
-    <div className="bk-page min-h-screen pb-10">
+    <div className="hf-frame min-h-screen px-2 py-2 sm:px-4 sm:py-4">
       <style>{STYLES}</style>
-      <div className="mx-auto w-full max-w-xl">{children}</div>
-      <p className="mt-6 px-4 text-center text-xs text-[#8a7f6a]">Secure booking · Payments by Razorpay</p>
+      <div className="hf-panel mx-auto w-full max-w-xl overflow-hidden rounded-[26px] pb-5">
+        {banner && <img src={img(banner)} alt="" className="block h-auto w-full" />}
+        {children}
+        {footer && (
+          <div className="hf-serif mt-5 px-4 text-center text-[13px] text-[#374151]">
+            <Ornament><span className="px-1">Secure booking • Payments by Razorpay</span></Ornament>
+            {supportLine && <p className="mt-1 break-words font-bold text-[#0b4d2c]">{supportLine.replace(/\s*:\s*/, ': ')}</p>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function Hero({ f }) {
+/** ——◇ text ◇—— gold divider. */
+function Ornament({ children, className = '' }) {
+  return (
+    <div className={`flex items-center justify-center gap-2 ${className}`}>
+      <span className="h-[2px] min-w-[18px] flex-1 bg-gradient-to-r from-transparent to-[#c9a24b]" aria-hidden />
+      <span className="h-2 w-2 shrink-0 rotate-45 border-2 border-[#c9a24b] bg-[#fff6dc]" aria-hidden />
+      {children}
+      {children && <span className="h-2 w-2 shrink-0 rotate-45 border-2 border-[#c9a24b] bg-[#fff6dc]" aria-hidden />}
+      <span className="h-[2px] min-w-[18px] flex-1 bg-gradient-to-l from-transparent to-[#c9a24b]" aria-hidden />
+    </div>
+  );
+}
+
+/** Gold hexagon "PASS n". */
+function PassHex({ n, size = 'md' }) {
+  const s = size === 'sm' ? 'h-[50px] w-[44px]' : 'h-[64px] w-[56px]';
+  return (
+    <span className={`hf-hex hf-serif inline-flex shrink-0 items-center justify-center p-[3px] ${s}`} aria-label={`Pass ${n}`}>
+      <span className="flex h-full w-full flex-col items-center justify-center leading-none text-[#0b3d23]">
+        <span className={size === 'sm' ? 'text-[9px] font-bold' : 'text-[11px] font-bold'}>PASS</span>
+        <span className={size === 'sm' ? 'text-[20px] font-extrabold' : 'text-[28px] font-extrabold'}>{n}</span>
+      </span>
+    </span>
+  );
+}
+
+function Hero({ f, onFullDetails }) {
   return (
     <header className="bk-up">
-      {f.heroImageUrl ? (
-        <img src={img(f.heroImageUrl)} alt={f.title} className="block h-auto w-full" />
-      ) : (
+      {!f.heroImageUrl && (
         <div className="bk-green px-4 py-8 text-center text-white">
           {f.businessName && <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#f3d77a]">{f.businessName}</p>}
-          <p className="mt-1 text-2xl font-extrabold leading-tight">{f.title}</p>
+          <p className="hf-serif mt-1 text-2xl font-extrabold leading-tight">{f.title}</p>
         </div>
       )}
-      <div className="px-4 pt-4 text-center">
-        <h1 className="break-words text-[28px] font-extrabold leading-tight text-[#0b4d2c] sm:text-4xl">{f.pageHeading || f.title}</h1>
-        <div className="mx-auto mt-2 flex max-w-xs items-center gap-2" aria-hidden>
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c9a24b]" />
-          <span className="h-2.5 w-2.5 rotate-45 border border-[#c9a24b]" />
-          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c9a24b]" />
-        </div>
+      <div className="px-3 pt-3 text-center">
+        <h1 className="hf-serif break-words text-[30px] font-extrabold leading-tight text-[#0b3d23] sm:text-[40px]">{f.pageHeading || f.title}</h1>
+        <Ornament className="mx-auto mt-1 max-w-sm" />
+        {onFullDetails && (
+          <button type="button" onClick={onFullDetails}
+                  className="hf-serif bk-tap mx-auto mt-2 inline-flex min-h-tap items-center gap-2 rounded-full border-2 border-[#c9a24b] bg-[#fffaf0] px-5 text-[15px] font-bold text-[#0b4d2c] shadow-sm">
+            <ListChecks className="h-5 w-5 text-[#a8873d]" aria-hidden /> Full Details
+          </button>
+        )}
       </div>
     </header>
   );
@@ -80,36 +131,40 @@ function Hero({ f }) {
 
 function PriceBlock({ p }) {
   const free = Number(p.salePrice) === 0;
-  if (free) return <span className="rounded-xl bg-[#0b5a33] px-3 py-2 text-base font-extrabold tracking-wide text-white shadow">FREE</span>;
+  if (free) return <span className="hf-serif rounded-lg bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-3 py-1.5 text-[19px] font-extrabold tracking-wide text-white shadow sm:px-5 sm:text-[24px]">FREE</span>;
   return (
-    <span className="flex flex-col items-center gap-1">
-      <span className="rounded-md bg-[#f4e3ad] px-2 text-[11px] font-bold text-[#5c4510]">PAID</span>
-      {Number(p.mrp) > Number(p.salePrice) && <span className="bk-strike text-sm font-semibold text-[#5b4a2a]">{rupees(p.mrp)}</span>}
-      <span className="bk-gold rounded-xl px-2.5 py-1 text-lg font-extrabold leading-none shadow-sm sm:text-xl">{rupees(p.salePrice)}</span>
+    <span className="hf-serif flex flex-col items-center gap-0.5">
+      <span className="rounded-md bg-[#f4e3ad] px-2 text-[11px] font-bold text-[#5c4510] sm:text-[13px]">PAID</span>
+      {Number(p.mrp) > Number(p.salePrice) && <span className="bk-strike text-[13px] font-bold text-[#5b4a2a] sm:text-[16px]">{rupees(p.mrp)}</span>}
+      <span className="bk-gold rounded-lg px-2 py-0.5 text-[18px] font-extrabold leading-tight sm:px-3 sm:text-[24px]">{rupees(p.salePrice)}</span>
     </span>
   );
 }
 
-function PassCard({ p, on, onToggle, onInfo, index }) {
+function PassCard({ p, n, on, onToggle, onInfo, index }) {
   return (
-    <div className={`bk-card bk-tap bk-up relative rounded-2xl p-2.5 ${on ? 'ring-2 ring-[#c9a24b]' : ''}`} style={{ animationDelay: `${index * 60}ms` }}>
-      <button type="button" onClick={onToggle} aria-pressed={on} className="grid w-full grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-2.5 text-left sm:grid-cols-[120px_minmax(0,1fr)_auto]">
+    <div className={`hf-card bk-tap bk-up relative rounded-2xl p-2 sm:p-2.5 ${on ? 'ring-[3px] ring-[#0b5a33]' : ''}`} style={{ animationDelay: `${index * 60}ms` }}>
+      <button type="button" onClick={onToggle} aria-pressed={on}
+              className="grid w-full grid-cols-[78px_minmax(0,1fr)_auto] items-center gap-2 text-left sm:grid-cols-[120px_auto_minmax(0,1fr)_auto] sm:gap-3">
         <span className="relative block">
           {p.imageUrl ? <img src={img(p.imageUrl)} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" loading="lazy" />
             : <span className="flex aspect-[4/3] w-full items-center justify-center rounded-xl bg-[#f4ecd9] text-[#a8873d]"><PackageIcon name={p.icon} className="h-8 w-8" /></span>}
           <span className={`absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white shadow ${on ? 'bg-[#0b5a33] text-white' : 'bg-white/90 text-transparent'}`}>
             <Check className="h-3.5 w-3.5" aria-hidden />
           </span>
+          <span className="absolute -bottom-2 -right-2 sm:hidden"><PassHex n={n} size="sm" /></span>
         </span>
-        <span className="min-w-0">
-          <span className="block break-words text-[16px] font-extrabold leading-snug text-[#0b4d2c] sm:text-lg">{p.name}</span>
-          {p.description && <span className="mt-0.5 block break-words text-[13px] leading-snug text-[#374151]">{p.description}</span>}
+        <span className="hidden border-r border-[#e2c77a] pr-3 sm:block"><PassHex n={n} /></span>
+        <span className="min-w-0 pl-1 sm:pl-0">
+          <span className="hf-serif block break-words text-[15.5px] font-extrabold leading-snug text-[#0b3d23] sm:text-[20px]">{p.name}</span>
+          {p.description && <span className="hf-serif mt-0.5 block break-words text-[12.5px] leading-snug text-[#374151] sm:text-[14px]">{p.description}</span>}
         </span>
-        <span className="flex items-center gap-1 border-l border-[#eadfc6] pl-2">
+        <span className="flex items-center gap-1 border-l border-[#e2c77a] pl-2">
           <PriceBlock p={p} />
+          <ChevronRight className="h-5 w-5 shrink-0 text-[#0b3d23]" aria-hidden />
         </span>
       </button>
-      <button type="button" onClick={onInfo} className="mt-1.5 inline-flex min-h-[32px] items-center gap-1 px-1 text-xs font-semibold text-[#0b5a33]">
+      <button type="button" onClick={onInfo} className="hf-serif mt-1 inline-flex min-h-[30px] items-center gap-1 px-1 text-xs font-bold text-[#0b5a33]">
         View full details <ChevronRight className="h-3.5 w-3.5" aria-hidden />
       </button>
     </div>
@@ -119,26 +174,38 @@ function PassCard({ p, on, onToggle, onInfo, index }) {
 function ComboCard({ combo, on, onToggle }) {
   return (
     <button type="button" onClick={onToggle} aria-pressed={on}
-            className={`bk-green bk-tap bk-up grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-3 text-left text-white shadow-lg ${on ? 'ring-4 ring-[#e2b443]' : ''}`}>
-      <span className="flex h-12 w-12 items-center justify-center border-r border-[#c9a24b]/60 pr-3"><Bus className="h-8 w-8" aria-hidden /></span>
-      <span className="min-w-0">
-        <span className="block break-words text-[16px] font-extrabold leading-snug sm:text-xl">{combo.title}</span>
-        {combo.subtitle && <span className="mt-0.5 block break-words text-[13px] leading-snug text-white/90">{combo.subtitle}</span>}
+            className={`hf-btn bk-tap bk-up grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl px-3 py-3 text-left text-white sm:px-5 ${on ? 'ring-4 ring-[#f3d27a]' : ''}`}>
+      <span className="hf-serif min-w-0 border-r border-[#d9b347]/70 pr-3">
+        <span className="block break-words text-[17px] font-extrabold leading-snug sm:text-[24px]">{combo.title}</span>
+        {combo.subtitle && <span className="mt-0.5 block break-words text-[13px] leading-snug text-white/90 sm:text-[17px]">{combo.subtitle}</span>}
         <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[#f7dc8c]">{on ? <><Check className="h-3.5 w-3.5" aria-hidden /> Combo selected</> : 'Tap to select all three'}</span>
       </span>
-      <span className="bk-gold flex flex-col items-center rounded-xl px-3 py-1.5">
-        {combo.mrp && <span className="bk-strike text-sm font-bold">{rupees(combo.mrp)}</span>}
-        <span className="text-xl font-extrabold leading-tight sm:text-2xl">{rupees(combo.price)}</span>
+      <span className="bk-gold hf-serif flex flex-col items-center rounded-xl px-3 py-1.5">
+        {combo.mrp && <span className="bk-strike text-[14px] font-bold sm:text-[18px]">{rupees(combo.mrp)}</span>}
+        <span className="text-[22px] font-extrabold leading-tight sm:text-[30px]">{rupees(combo.price)}</span>
       </span>
     </button>
   );
 }
 
-function FeeBox({ p }) {
+function FeeBox({ p, note }) {
+  const parts = (p.description || '').split(/\s*•\s*/).filter(Boolean);
   return (
-    <div className="bk-up rounded-2xl border-2 border-[#d9b65c] bg-[#fffdf7] px-4 py-3 text-center">
-      <p className="break-words text-[17px] font-extrabold leading-snug text-[#0b4d2c] sm:text-xl">{rupees(p.salePrice)} {p.name}</p>
-      {p.description && <p className="mt-0.5 break-words text-[13px] text-[#374151]">{p.description}</p>}
+    <div className="hf-box bk-up hf-serif rounded-2xl px-3 py-3 text-center">
+      <p className="break-words text-[18px] font-extrabold leading-snug text-[#0b3d23] sm:text-[24px]">{rupees(p.salePrice)} {p.name}</p>
+      {parts.length > 0 && (
+        <p className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 break-words text-[13px] text-[#374151] sm:text-[16px]">
+          {parts.map((t, i) => (
+            <span key={i} className="inline-flex items-center gap-2">{i > 0 && <span className="h-2 w-2 rotate-45 bg-[#e2b443]" aria-hidden />}{t}</span>
+          ))}
+        </p>
+      )}
+      {note && (
+        <>
+          <Ornament className="mx-auto mt-2 max-w-xs" />
+          <p className="mt-1 break-words text-[13px] italic text-[#374151] sm:text-[15px]">{note}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -171,8 +238,9 @@ function groupRounds(stops) {
 function FullDetails({ packages, startId, onClose }) {
   const [active, setActive] = useState(startId ?? packages[0]?.id);
   const tabsRef = useRef(null);
+  const panelRef = useRef(null);
   useEffect(() => {
-    tabsRef.current?.querySelector(`[data-tab="${active}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    panelRef.current?.scrollTo?.({ top: 0 });
   }, [active]);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -185,19 +253,25 @@ function FullDetails({ packages, startId, onClose }) {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose} role="dialog" aria-modal="true" aria-label="Full details">
       <div className="bk-sheet flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-[#fbf7ee] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between gap-2 bg-[#0b4d2c] px-4 py-3 text-white">
+        <div className="flex shrink-0 items-center justify-between gap-2 bg-[#0b4d2c] px-4 py-3 text-white">
           <h2 className="text-lg font-extrabold">Full Details</h2>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
         </div>
-        <div ref={tabsRef} role="tablist" className="flex gap-2 overflow-x-auto border-b border-[#eadfc6] bg-white px-3 py-2 [scrollbar-width:none]">
-          {packages.map((x) => (
-            <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={x.id === p.id} onClick={() => setActive(x.id)}
-                    className={`shrink-0 rounded-full px-3 py-2 text-left text-[13px] font-bold leading-tight ${x.id === p.id ? 'bg-[#0b5a33] text-white' : 'bg-[#f3ecdc] text-[#0b4d2c]'}`}>
-              {x.name.replace(/\s*Pass$/i, '')}
-            </button>
-          ))}
+        <div ref={tabsRef} role="tablist" className="grid shrink-0 grid-cols-2 gap-2 border-b border-[#eadfc6] bg-white p-2 sm:grid-cols-4">
+          {packages.map((x, i) => {
+            const on = x.id === p.id;
+            return (
+              <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={on} onClick={() => setActive(x.id)}
+                      className={`hf-serif flex min-h-[56px] items-center gap-2 rounded-xl border-2 px-2 py-1.5 text-left ${on ? 'border-[#0b5a33] bg-[#0b5a33] text-white shadow' : 'border-[#e2c77a] bg-[#fffaf0] text-[#0b3d23]'}`}>
+                <span className={`flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg leading-none ${on ? 'bg-white/15 text-[#f7dc8c]' : 'bg-[#f4e3ad] text-[#0b3d23]'}`}>
+                  <span className="text-[8px] font-bold">PASS</span><span className="text-[17px] font-extrabold">{i + 1}</span>
+                </span>
+                <span className="min-w-0 break-words text-[12.5px] font-bold leading-tight">{x.name.replace(/\s*Pass$/i, '')}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="overflow-y-auto p-4" role="tabpanel">
+        <div ref={panelRef} className="min-h-0 flex-1 overflow-y-auto p-4" role="tabpanel">
           {p.imageUrl && <img src={img(p.imageUrl)} alt="" className="mb-3 aspect-[16/9] w-full rounded-2xl object-cover" />}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -236,38 +310,87 @@ function FullDetails({ packages, startId, onClose }) {
   );
 }
 
-function Downloads({ done }) {
+/** Pass number (1, 2, ...) of an item, from the order of the passes on the page (matched by the pass id's code). */
+const passNumber = (cards, it, i) => {
+  const code = (it.passNo || '').split('-').pop();
+  const n = cards.findIndex((p) => p.code === code);
+  return n >= 0 ? n + 1 : i + 1;
+};
+
+function SectionTitle({ children, sub }) {
+  return (
+    <div className="text-center">
+      <Ornament><h2 className="hf-serif px-1 text-[21px] font-extrabold uppercase leading-tight tracking-wide text-[#0b3d23] sm:text-[28px]">{children}</h2></Ornament>
+      {sub}
+    </div>
+  );
+}
+
+/** Totals of a paid booking (all its passes, combo discount, registration fee, total paid). */
+function BookingSummary({ b }) {
+  const all = b?.items || [];
+  const passes = all.filter((it) => it.passNo);
+  const fees = all.filter((it) => !it.passNo);
+  const discount = Number(b.discountAmount || 0);
+  const passTotal = passes.reduce((a, it) => a + Number(it.price || 0), 0) - discount;
+  const money = (v) => (Number(v) > 0 ? rupees(v) : 'FREE');
+  const row = 'flex items-start justify-between gap-3 border-b border-[#ecdcae] py-1.5';
+  return (
+    <section className="hf-box bk-up hf-serif mx-3 mt-4 rounded-3xl p-4 sm:mx-4">
+      <SectionTitle sub={<span className="mt-1 inline-block rounded-full border-2 border-[#d9b65c] bg-[#fbecc0] px-4 py-0.5 text-[13px] font-extrabold text-[#0b3d23]">{passes.length} PASSES SELECTED</span>}>
+        Booking Summary
+      </SectionTitle>
+      <ul className="mt-2 text-[15px] text-[#1f2937]">
+        {passes.map((it) => (
+          <li key={it.id} className={row}><span className="min-w-0 break-words">{it.name}</span><span className="shrink-0 font-bold">{money(it.price)}</span></li>
+        ))}
+        {discount > 0 && <li className={`${row} text-[#0b6b3a]`}><span className="min-w-0 break-words">Combo Discount</span><span className="shrink-0 font-bold">– {rupees(discount)}</span></li>}
+        <li className={`${row} font-bold`}><span>Passes Total</span><span>{money(passTotal)}</span></li>
+        {fees.map((it) => (
+          <li key={it.id} className={row}><span className="min-w-0 break-words">{it.name}</span><span className="shrink-0 font-bold">{rupees(it.price)}</span></li>
+        ))}
+      </ul>
+      <div className="hf-btn mt-3 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-white">
+        <span className="text-[19px] font-extrabold uppercase tracking-wide sm:text-[24px]">Total Paid</span>
+        <span className="text-[22px] font-extrabold sm:text-[28px]">{money(b.total)}</span>
+      </div>
+    </section>
+  );
+}
+
+function Downloads({ done, cards }) {
   const b = done.booking;
   const items = (b?.items || []).filter((it) => it.passNo);
+  const invoices = b.invoices?.length ? b.invoices : b.invoiceUrl ? [{ invoiceNo: null, url: b.invoiceUrl }] : [];
   return (
-    <section className="bk-card bk-up mt-5 rounded-3xl p-5 text-left">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-[#0b4d2c]"><Download className="h-5 w-5 text-[#a8873d]" aria-hidden /> Your downloads</h2>
-      <p className="mt-1 break-words text-sm text-[#6b7280]">Booking no. <b className="text-[#0b4d2c]">{b.bookingNo}</b> · each pass has its own secure QR code, valid once at the entry.</p>
-      <ul className="mt-4 space-y-2.5">
-        {items.map((it) => (
-          <li key={it.id} className="flex items-center gap-3 rounded-2xl border border-[#ece3cf] bg-[#fffdf8] p-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0b5a33] text-white"><QrCode className="h-5 w-5" aria-hidden /></span>
+    <section className="hf-box bk-up hf-serif mx-3 mt-4 rounded-3xl p-4 text-left sm:mx-4">
+      <SectionTitle sub={<p className="mt-1 break-words text-[14px] text-[#374151]">Har pass ka apna QR code hai. Entry par wahi pass dikhayein.</p>}>Aapke Passes</SectionTitle>
+      <ul className="mt-3 space-y-2">
+        {items.map((it, i) => (
+          <li key={it.id} className="hf-card flex items-center gap-3 rounded-2xl p-2 pr-3">
+            <span className="border-r border-[#e2c77a] pr-2"><PassHex n={passNumber(cards, it, i)} size="sm" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold leading-snug text-[#0b4d2c] break-words">{/pass$/i.test(it.name) ? it.name : `${it.name} Pass`}</span>
-              <span className="block break-words text-xs text-[#6b7280]">Pass ID {it.passNo}</span>
+              <span className="block break-words text-[15.5px] font-extrabold leading-snug text-[#0b3d23]">{/pass$/i.test(it.name) ? it.name : `${it.name} Pass`}</span>
+              <span className="block break-words text-[13px] text-[#4b5563]">{it.passNo}</span>
             </span>
             {it.passUrl && (
-              <a href={`${regApi.publicUrl(it.passUrl)}?download=true`} className="inline-flex min-h-tap items-center gap-1 rounded-xl bg-[#0b5a33] px-3 text-sm font-semibold text-white">
-                <Download className="h-4 w-4" aria-hidden /> Pass
+              <a href={`${regApi.publicUrl(it.passUrl)}?download=true`} aria-label={`Download ${it.name}`}
+                 className="hf-btn inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl text-white">
+                <Download className="h-5 w-5" aria-hidden />
               </a>
             )}
           </li>
         ))}
       </ul>
-      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {b.passesPdfUrl && (
-          <a href={regApi.publicUrl(b.passesPdfUrl)} className="inline-flex min-h-tap items-center justify-center gap-2 rounded-xl border border-[#0b5a33] px-4 font-semibold text-[#0b4d2c]">
-            <Ticket className="h-4 w-4" aria-hidden /> All passes (PDF)
+          <a href={regApi.publicUrl(b.passesPdfUrl)} className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-2xl border-2 border-[#0b5a33] bg-white px-4 text-[17px] font-extrabold text-[#0b3d23]">
+            <FileText className="h-5 w-5 text-[#0b5a33]" aria-hidden /> Sabhi Passes (PDF)
           </a>
         )}
-        {(b.invoices?.length ? b.invoices : b.invoiceUrl ? [{ invoiceNo: null, url: b.invoiceUrl }] : []).map((inv, n, all) => (
-          <a key={inv.url} href={regApi.publicUrl(inv.url)} className="inline-flex min-h-tap items-center justify-center gap-2 rounded-xl border border-[#c9a24b] bg-[#fdf6e6] px-4 text-center font-semibold text-[#7a5f22]">
-            <FileText className="h-4 w-4 shrink-0" aria-hidden /> {all.length > 1 ? `Invoice ${n + 1} (PDF)` : 'Invoice (PDF)'}
+        {invoices.map((inv, n, all) => (
+          <a key={inv.url} href={regApi.publicUrl(inv.url)} className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-2xl border-2 border-[#d9b65c] bg-[#fdf3d8] px-4 text-center text-[17px] font-extrabold text-[#7a5f22]">
+            <FileText className="h-5 w-5 shrink-0" aria-hidden /> {all.length > 1 ? `Invoice ${n + 1} (PDF)` : 'Invoice (PDF)'}
           </a>
         ))}
       </div>
@@ -382,126 +505,146 @@ export default function RegisterPage() {
   if (done) {
     const single = done.passUrl && !done.booking;
     return (
-      <Shell>
-        {f.heroImageUrl && <img src={img(f.heroImageUrl)} alt={f.title} className="block h-auto w-full" />}
-        <div className="px-4">
-          <div className="bk-card bk-up mt-4 rounded-3xl p-6 text-center">
-            <SuccessAnimation />
-            <h1 className="mt-1 text-2xl font-extrabold text-[#0b4d2c]">{done.paymentStatus === 'PAID' ? 'Booking confirmed!' : 'Registered!'}</h1>
-            <p className="mt-1 break-words text-sm text-[#4b5563]">{done.successMessage || `Thank you ${done.name}. Your booking number is ${done.passNo}.`}</p>
-            {done.paymentStatus === 'PAID' && done.amount && (
-              <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#eaf5ee] px-3 py-1 text-sm font-semibold text-[#0b5a33]"><ShieldCheck className="h-4 w-4" aria-hidden /> Payment of {rupees(done.amount)} received</p>
-            )}
-            <p className="mt-3 text-sm text-[#374151]">{passStatusText(done.passStatus)}</p>
-            {done.whatsappLink && (
-              <a href={done.whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-semibold text-white">
-                <MessageCircle className="h-5 w-5" aria-hidden /> Get my pass on WhatsApp
+      <Shell banner={subBanner(f.heroImageUrl)} supportLine={f.supportLine}>
+        <section className="hf-box bk-up hf-serif mx-3 mt-3 rounded-3xl px-4 pb-5 pt-4 text-center sm:mx-4">
+          <span className="hf-pop mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-full border-4 border-[#d9b347] bg-gradient-to-b from-[#16804a] to-[#0a4a2b] shadow-lg">
+            <Check className="h-10 w-10 text-white" strokeWidth={3.5} aria-hidden />
+          </span>
+          <h1 className="mt-2 text-[30px] font-extrabold leading-tight text-[#0b3d23] sm:text-[38px]">{done.paymentStatus === 'PAID' ? 'Booking Confirmed!' : 'Registered!'}</h1>
+          <Ornament className="mx-auto max-w-sm" />
+          <p className="mt-1 break-words text-[16px] text-[#1f2937]">{done.name}, aapki booking confirm ho gayi hai.</p>
+          {done.passNo && (
+            <p className="mt-2 inline-block rounded-full border-2 border-[#d9b65c] bg-[#fffaf0] px-4 py-1 text-[16px] text-[#1f2937]">Booking No. <b>{done.passNo}</b></p>
+          )}
+          {done.paymentStatus === 'PAID' && done.amount && (
+            <p className="mx-auto mt-2 block w-fit rounded-full bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-5 py-1.5 text-[17px] font-extrabold text-white shadow">Payment received: {rupees(done.amount)}</p>
+          )}
+          <p className="mt-2 break-words text-[15px] text-[#374151]">Aapke passes WhatsApp par bheje ja rahe hain.<br />Agar na milein, neeche button par tap karein.</p>
+          {done.whatsappLink && (
+            <a href={done.whatsappLink} target="_blank" rel="noopener noreferrer"
+               className="hf-btn mt-3 inline-flex min-h-[56px] w-full items-center justify-center gap-3 rounded-full px-4 text-[18px] font-extrabold text-white">
+              <MessageCircle className="h-7 w-7" aria-hidden /> WhatsApp par passes paayein
+            </a>
+          )}
+          {single && (
+            <>
+              <img src={regApi.publicUrl(done.passUrl)} alt={`Pass ${done.passNo}`} className="mx-auto mt-4 w-full max-w-xs rounded-xl border border-[#e2d6bb] shadow" />
+              <a href={`${regApi.publicUrl(done.passUrl)}?download=true`} className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-xl border-2 border-[#0b5a33] px-4 py-3 font-bold text-[#0b5a33]">
+                <Download className="h-5 w-5" aria-hidden /> Download pass
               </a>
-            )}
-            {single && (
-              <>
-                <img src={regApi.publicUrl(done.passUrl)} alt={`Pass ${done.passNo}`} className="mx-auto mt-4 w-full max-w-xs rounded-xl border border-[#e2d6bb] shadow" />
-                <a href={`${regApi.publicUrl(done.passUrl)}?download=true`} className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-xl border border-[#0b5a33] px-4 py-3 font-semibold text-[#0b5a33]">
-                  <Download className="h-5 w-5" aria-hidden /> Download pass
-                </a>
-              </>
-            )}
-          </div>
-          {done.booking && <Downloads done={done} />}
-        </div>
+            </>
+          )}
+        </section>
+        {done.booking && <BookingSummary b={done.booking} />}
+        {done.booking && <Downloads done={done} cards={cards} />}
       </Shell>
     );
   }
 
   const legalLink = (kind, label) => <Link to={`/r/${slug}/${kind}`} target="_blank" className="font-semibold text-[#0b4d2c] underline decoration-[#c9a24b] underline-offset-2">{label}</Link>;
   const comboOn = comboApplies(packages, sel, combo);
+  const legal = (kind, label) => (f[kind === 'terms' ? 'hasTerms' : 'hasPrivacy'] ? legalLink(kind, label) : label);
   return (
-    <Shell>
-      <Hero f={f} />
-      <div className="space-y-3 px-3 pt-4 sm:px-4">
-        {cards.length > 0 && (
-          <button type="button" onClick={() => setInfo(cards[0])}
-                  className="bk-tap mx-auto flex min-h-tap items-center gap-2 rounded-full border-2 border-[#c9a24b] bg-white px-5 text-[15px] font-bold text-[#0b4d2c] shadow-sm">
-            <ListChecks className="h-5 w-5 text-[#a8873d]" aria-hidden /> Full Details
-          </button>
-        )}
+    <Shell banner={f.heroImageUrl} footer={false}>
+      <Hero f={f} onFullDetails={cards.length ? () => setInfo(cards[0]) : null} />
+      <div className="space-y-2.5 px-2.5 pt-3 sm:px-4">
         {f.description && <Description text={f.description} />}
         {cards.map((p, i) => (
-          <PassCard key={p.id} p={p} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
+          <PassCard key={p.id} p={p} n={i + 1} index={i} on={sel.includes(p.id)} onToggle={() => setSelected(toggleId(sel, p.id))} onInfo={() => setInfo(p)} />
         ))}
         {combo && <ComboCard combo={combo} on={comboOn} onToggle={() => setSelected(toggleCombo(packages, sel, combo))} />}
-        {fees.map((p) => <FeeBox key={p.id} p={p} />)}
-        {!packages.length && f.feeAmount && <FeeBox p={{ salePrice: f.feeAmount, name: f.feeLabel || 'Registration fee' }} />}
-        {f.pageNote && <p className="break-words px-2 text-center text-[13px] text-[#374151]">{f.pageNote}</p>}
+        {fees.map((p, i) => <FeeBox key={p.id} p={p} note={i === fees.length - 1 ? f.pageNote : null} />)}
+        {!packages.length && f.feeAmount && <FeeBox p={{ salePrice: f.feeAmount, name: f.feeLabel || 'Registration fee' }} note={f.pageNote} />}
+        {!fees.length && packages.length > 0 && f.pageNote && <p className="hf-serif break-words px-2 text-center text-[14px] italic text-[#374151]">{f.pageNote}</p>}
         {!f.open ? (
           <Alert variant="warning" title={f.closedReason || 'Bookings are closed'} />
         ) : (
           <>
             {packages.length > 0 && (
-              <p className="text-center text-[13px] text-[#374151]">
-                Selected Pass: <b className="text-[#0b4d2c]">{picked.length}</b> · Total <b className="text-[#0b4d2c]">{price(passTotal)}</b>
-                {totals.comboDiscount > 0 && <> · Combo Discount <b className="text-[#0b5a33]">{rupees(totals.comboDiscount)}</b></>}
+              <p className="hf-serif text-center text-[14px] text-[#374151]">
+                Selected Pass: <b className="text-[#0b3d23]">{picked.length}</b> · Total <b className="text-[#0b3d23]">{price(passTotal)}</b>
+                {totals.comboDiscount > 0 && <> · Combo Discount <b className="text-[#0b6b3a]">{rupees(totals.comboDiscount)}</b></>}
               </p>
             )}
             <button type="button" onClick={() => setSheet(true)}
-                    className="bk-green bk-tap min-h-[60px] w-full rounded-2xl text-[22px] font-extrabold text-white shadow-lg">
-              {f.ctaLabel || 'Register'}
+                    className="hf-btn hf-serif bk-tap flex min-h-[66px] w-full items-center justify-center gap-3 rounded-full text-[26px] font-extrabold text-white sm:text-[34px]">
+              <span className="hidden text-[#f3d27a] min-[380px]:inline" aria-hidden>—◇</span>{f.ctaLabel || 'Register'}<span className="hidden text-[#f3d27a] min-[380px]:inline" aria-hidden>◇—</span>
             </button>
           </>
         )}
+        <div className="hf-serif pt-1 text-center text-[14px] font-bold text-[#0b3d23]">
+          <Ornament className="mx-auto max-w-xs">
+            {f.hasTerms ? <Link to={`/r/${slug}/terms`} target="_blank" className="px-1 underline decoration-[#c9a24b] underline-offset-2">T&amp;C Apply</Link> : <span className="px-1">T&amp;C Apply</span>}
+          </Ornament>
+        </div>
       </div>
 
       {info && <FullDetails packages={cards} startId={info.id} onClose={closeInfo} />}
       {celebrate && <ComboCelebration discount={totals.comboDiscount} onClose={endCelebrate} />}
 
       {sheet && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setSheet(false)} role="dialog" aria-modal="true" aria-label="Registration">
-          <div className="bk-sheet bk-form max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-xl font-extrabold text-[#0b4d2c]">{f.ctaLabel || 'Register'}</h2>
-              <button type="button" onClick={() => setSheet(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3ecdc]" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
-            </div>
-            {packages.length > 0 && (
-              <ul className="mb-4 divide-y divide-[#f0e8d6] rounded-2xl border border-[#eadfc6] bg-[#fffdf7] px-3 text-sm">
-                <li className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-[#8a7f6a]">Selected Pass ({picked.length})</li>
-                {picked.length === 0 && <li className="py-2 text-[#6b7280]">No pass selected</li>}
-                {picked.map((p) => (
-                  <li key={p.id} className="flex items-start justify-between gap-3 py-2">
-                    <span className="min-w-0 break-words">{p.name}</span>
-                    <span className="shrink-0 font-semibold">{price(Number(p.salePrice))}</span>
-                  </li>
-                ))}
-                {totals.comboDiscount > 0 && (
-                  <li className="flex items-start justify-between gap-3 py-2 text-[#0b5a33]"><span className="min-w-0 break-words">Combo Discount</span><span className="shrink-0 font-semibold">− {rupees(totals.comboDiscount)}</span></li>
+        <div className="fixed inset-0 z-40 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Registration">
+          <div className="bk-sheet bk-form">
+            <Shell banner={subBanner(f.heroImageUrl)} footer={false}>
+              <section className="hf-box hf-serif mx-3 mt-3 rounded-3xl p-4 sm:mx-4">
+                <div className="relative">
+                  <Ornament className="pr-12"><h2 className="px-1 text-[28px] font-extrabold leading-tight text-[#0b3d23] sm:text-[36px]">{f.ctaLabel || 'Register'}</h2></Ornament>
+                  <button type="button" onClick={() => setSheet(false)} aria-label="Close"
+                          className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#d9b65c] bg-[#fffaf0] text-[#0b3d23]"><X className="h-6 w-6" aria-hidden /></button>
+                </div>
+                <p className="mt-1 text-center text-[15px] text-[#1f2937]">Apni details check karke payment karein.</p>
+                {packages.length > 0 && (
+                  <div className="hf-box mt-3 rounded-2xl p-3">
+                    <Ornament><span className="rounded-full border-2 border-[#d9b65c] bg-[#fbecc0] px-3 py-0.5 text-[15px] font-extrabold uppercase text-[#0b3d23]">Selected Passes ({picked.length})</span></Ornament>
+                    <ul className="mt-2 text-[15px] text-[#1f2937]">
+                      {picked.length === 0 && <li className="py-2 text-[#6b7280]">No pass selected</li>}
+                      {picked.map((p) => (
+                        <li key={p.id} className="flex items-start justify-between gap-3 border-b border-[#ecdcae] py-1.5">
+                          <span className="min-w-0 break-words">{p.name}</span><span className="shrink-0 font-bold">{price(Number(p.salePrice))}</span>
+                        </li>
+                      ))}
+                      {totals.comboDiscount > 0 && (
+                        <li className="flex items-start justify-between gap-3 border-b border-[#ecdcae] py-1.5 text-[#0b6b3a]"><span className="min-w-0 break-words">Combo Discount</span><span className="shrink-0 font-bold">– {rupees(totals.comboDiscount)}</span></li>
+                      )}
+                      <li className="flex items-center justify-between gap-3 border-b border-[#ecdcae] py-1.5 font-bold"><span>Passes Total</span><span>{price(passTotal)}</span></li>
+                      {feeItems.map((p) => (
+                        <li key={p.id} className="flex items-start justify-between gap-3 py-1.5">
+                          <span className="min-w-0 break-words">{p.name}</span><span className="shrink-0 font-bold">{rupees(p.salePrice)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="hf-btn mt-2 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-white">
+                      <span className="text-[18px] font-extrabold uppercase tracking-wide sm:text-[24px]">Total Payable</span>
+                      <span className="text-[22px] font-extrabold sm:text-[28px]">{amount > 0 ? rupees(amount) : 'FREE'}</span>
+                    </div>
+                  </div>
                 )}
-                <li className="flex items-center justify-between gap-3 py-2 font-semibold"><span>Passes total</span><span>{price(passTotal)}</span></li>
-                {feeItems.map((p) => (
-                  <li key={p.id} className="flex items-start justify-between gap-3 py-2">
-                    <span className="min-w-0 break-words">{p.name}</span>
-                    <span className="shrink-0 font-semibold">{rupees(p.salePrice)}</span>
-                  </li>
-                ))}
-                <li className="flex items-center justify-between py-2 text-base font-extrabold text-[#0b4d2c]"><span>Total payable</span><span>{amount > 0 ? rupees(amount) : 'Free'}</span></li>
-              </ul>
-            )}
-            <form id="bk-form" className="space-y-4" noValidate onSubmit={handleSubmit((v) => submit.mutate(v))}>
-              <Input label="Full name" required autoComplete="name" maxLength={80} placeholder="As on your ID" error={formState.errors.name?.message} {...register('name')} />
-              <Controller name="mobile" control={control} render={({ field }) => (
-                <PhoneInput label="WhatsApp mobile number" required value={field.value} onChange={field.onChange}
-                            hint="Your passes are sent to this WhatsApp number." error={formState.errors.mobile?.message} />
-              )} />
-              {f.collectPhoto && <FileUpload label="Your photo (optional)" value={photo} onChange={setPhoto} accept="image/jpeg,image/png" maxSizeMB={5} hint="JPG or PNG, up to 5 MB." />}
-              <Controller name="consent" control={control} render={({ field }) => (
-                <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} error={formState.errors.consent?.message}
-                          label={<span className="text-[#1f2937]">{f.consentText}{(f.hasTerms || f.hasPrivacy) && <> — I accept the {f.hasTerms && legalLink('terms', 'Terms & Conditions')}{f.hasTerms && f.hasPrivacy && ' and '}{f.hasPrivacy && legalLink('privacy', 'Privacy Policy')}.</>}</span>} />
-              )} />
-              <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
-              {addOnNote && <Alert variant="info" title={addOnNote} />}
-              {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}
-              <Button type="submit" fullWidth size="lg" loading={submit.isPending || paying} className="!rounded-xl !bg-[#0b5a33] hover:!bg-[#0a4a2b]">
-                {amount > 0 ? `Pay ${rupees(amount)}` : 'Get my pass'}
-              </Button>
-            </form>
+                <form id="bk-form" className="mt-4 space-y-4" noValidate onSubmit={handleSubmit((v) => submit.mutate(v))}>
+                  <Input label="Full name" required autoComplete="name" maxLength={80} placeholder="As on your ID" error={formState.errors.name?.message} {...register('name')} />
+                  <Controller name="mobile" control={control} render={({ field }) => (
+                    <PhoneInput label="WhatsApp mobile number" required value={field.value} onChange={field.onChange}
+                                hint="Aapke passes isi WhatsApp number par bheje jayenge." error={formState.errors.mobile?.message} />
+                  )} />
+                  {f.collectPhoto && <FileUpload label="Your photo (optional)" value={photo} onChange={setPhoto} accept="image/jpeg,image/png" maxSizeMB={5} hint="JPG or PNG, up to 5 MB." />}
+                  <Controller name="consent" control={control} render={({ field }) => (
+                    <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} error={formState.errors.consent?.message}
+                              label={<span className="hf-serif text-[15px] font-normal text-[#1f2937]">{f.consentText}
+                                {(f.hasTerms || f.hasPrivacy) && <span className="mt-1 block">Main {legal('terms', 'Terms & Conditions')} aur {legal('privacy', 'Privacy Policy')} sweekar karta/karti hoon.</span>}</span>} />
+                  )} />
+                  <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+                  {addOnNote && <Alert variant="info" title={addOnNote} />}
+                  {formState.errors.root && <Alert variant="error" title={formState.errors.root.message} />}
+                  <Button type="submit" fullWidth size="lg" loading={submit.isPending || paying}
+                          className="hf-btn hf-serif !min-h-[62px] !rounded-full !bg-transparent !text-[26px] !font-extrabold">
+                    {amount > 0 ? `Pay ${rupees(amount)}` : 'Get my pass'}
+                  </Button>
+                </form>
+                <div className="mt-4 text-center text-[14px] text-[#374151]">
+                  <Ornament><span className="px-1">Secure payment • Razorpay</span></Ornament>
+                  {f.supportLine && <p className="mt-1 break-words font-bold text-[#0b3d23]">{f.supportLine.replace(/\s*:\s*/, ': ')}</p>}
+                </div>
+              </section>
+            </Shell>
           </div>
         </div>
       )}
