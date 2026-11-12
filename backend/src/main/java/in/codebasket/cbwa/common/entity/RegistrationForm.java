@@ -106,6 +106,9 @@ public class RegistrationForm extends AuditableEntity {
     @Column(columnDefinition = "LONGTEXT")
     private String privacyText;
 
+    @Column(columnDefinition = "LONGTEXT")
+    private String refundText;
+
     // booking page look
     private String heroImageUrl;
     private String pageHeading;

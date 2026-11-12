@@ -92,7 +92,7 @@ class BookingIT extends AbstractIntegrationTest {
     void bookingWithPackagesPaymentPassesInvoiceAndOneTimeRedemption() throws Exception {
         String form = send(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/partner/registration-forms"), """
                 {"title":"Ziyarat Passes for HAJJ 2027","slug":"ziyarat-2027","senderId":%d,"passPrefix":"ZP",
-                 "termsText":"1. Passes are non-transferable.","privacyText":"We keep your name and mobile only for this booking.",
+                 "termsText":"1. Passes are non-transferable.","privacyText":"We keep your name and mobile only for this booking.","refundText":"Rs 49 fee is not refundable.",
                  "packages":[
                    {"code":"REG","name":"Harmain Ziyarat Show","mrp":49,"salePrice":49,"mandatory":true,"icon":"landmark"},
                    {"code":"SMM","name":"Special Makkah & Madina Ziyarat","mrp":5000,"salePrice":3000,"icon":"moon-star"},
@@ -108,9 +108,15 @@ class BookingIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.data.packages[0].mandatory").value(true))
                 .andExpect(jsonPath("$.data.packages[1].mrp").value("5000.00"))
                 .andExpect(jsonPath("$.data.packages[1].salePrice").value("3000.00"))
-                .andExpect(jsonPath("$.data.hasTerms").value(true));
+                .andExpect(jsonPath("$.data.hasTerms").value(true))
+                .andExpect(jsonPath("$.data.hasRefund").value(true));
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/public/register/ziyarat-2027/legal/privacy"))
                 .andExpect(jsonPath("$.data.title").value("Privacy Policy"));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/public/register/ziyarat-2027/legal/refund"))
+                .andExpect(jsonPath("$.data.title").value("Refund Policy"))
+                .andExpect(jsonPath("$.data.text").value("Rs 49 fee is not refundable."));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/public/register/ziyarat-2027/legal/other"))
+                .andExpect(status().isNotFound());
 
         // A package id from elsewhere is refused; the price is always computed on the server.
         register("Imran Shaikh", "9811122233", "999999").andExpect(status().isBadRequest())

@@ -89,7 +89,7 @@ public class RegistrationFormService {
                           String passPrefix, Long passTemplateId, List<String> passTemplateBody, String passCaption,
                           Long contactGroupId, List<String> contactTags, List<FollowUp> followUps, int registrationsCount,
                           java.math.BigDecimal feeAmount, String feeLabel, boolean paymentsReady, Instant createdAt, Instant updatedAt,
-                          List<PackageDto> packages, String termsText, String privacyText, String heroImageUrl, String pageHeading,
+                          List<PackageDto> packages, String termsText, String privacyText, String refundText, String heroImageUrl, String pageHeading,
                           String pageNote, String ctaLabel, String comboTitle, String comboSubtitle, String comboCodes,
                           java.math.BigDecimal comboMrp, java.math.BigDecimal comboPrice, Instant comboValidUntil, String invoiceName, String passSupportLine, String shareTitle,
                           String shareDescription, String shareImageUrl, String invoiceStyle, String invoiceContact) {
@@ -108,7 +108,7 @@ public class RegistrationFormService {
                               @jakarta.validation.constraints.Digits(integer = 6, fraction = 2) java.math.BigDecimal feeAmount,
                               @Size(max = 120) String feeLabel,
                               @Size(max = 12) List<@Valid PackageRequest> packages,
-                              @Size(max = 50000) String termsText, @Size(max = 50000) String privacyText,
+                              @Size(max = 50000) String termsText, @Size(max = 50000) String privacyText, @Size(max = 50000) String refundText,
                               @Size(max = 500) String heroImageUrl, @Size(max = 160) String pageHeading, @Size(max = 300) String pageNote,
                               @Size(max = 60) String ctaLabel, @Size(max = 160) String comboTitle, @Size(max = 200) String comboSubtitle,
                               @Size(max = 200) String comboCodes, @jakarta.validation.constraints.DecimalMin("0") java.math.BigDecimal comboMrp,
@@ -464,6 +464,9 @@ public class RegistrationFormService {
         if (req.privacyText() != null) {
             f.setPrivacyText(trimToNull(req.privacyText()));
         }
+        if (req.refundText() != null) {
+            f.setRefundText(trimToNull(req.refundText()));
+        }
         f.setHeroImageUrl(safeUrl(req.heroImageUrl(), "heroImageUrl"));
         f.setPageHeading(trimToNull(req.pageHeading()));
         f.setPageNote(trimToNull(req.pageNote()));
@@ -553,7 +556,7 @@ public class RegistrationFormService {
                 f.getPassDesign(), design, f.getPassLayout(), f.getPassPrefix(), f.getPassTemplateId(), f.getPassTemplateBody(),
                 f.getPassCaption(), f.getContactGroupId(), f.getContactTags(), f.getFollowUps(), f.getRegistrationsCount(),
                 f.getFeeAmount(), f.getFeeLabel(), payments.ready(f.getPartnerId()), f.getCreatedAt(), f.getUpdatedAt(),
-                packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
+                packageDtos(f), f.getTermsText(), f.getPrivacyText(), f.getRefundText(), f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(),
                 f.getCtaLabel(), f.getComboTitle(), f.getComboSubtitle(), f.getComboCodes(), f.getComboMrp(), f.getComboPrice(),
                 f.getComboValidUntil(), f.getInvoiceName(), f.getPassSupportLine(),
                 f.getShareTitle(), f.getShareDescription(), f.getShareImageUrl(), f.getInvoiceStyle(), f.getInvoiceContact());

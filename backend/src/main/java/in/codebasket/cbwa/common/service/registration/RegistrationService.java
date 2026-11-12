@@ -138,7 +138,7 @@ public class RegistrationService {
     public record PublicFormDto(String slug, String title, String description, String businessName, String consentText,
                                 boolean collectPhoto, boolean passEnabled, boolean open, String closedReason,
                                 java.math.BigDecimal feeAmount, String feeLabel, List<BookingService.PackageView> packages,
-                                boolean hasTerms, boolean hasPrivacy, String heroImageUrl, String pageHeading, String pageNote,
+                                boolean hasTerms, boolean hasPrivacy, boolean hasRefund, String heroImageUrl, String pageHeading, String pageNote,
                                 String ctaLabel, BookingService.ComboView combo, String supportLine) {
     }
 
@@ -172,6 +172,7 @@ public class RegistrationService {
                 f.isCollectPhoto(), f.isPassEnabled(), closed == null, closed,
                 packages.isEmpty() && paid(f) ? f.getFeeAmount() : null, f.getFeeLabel(), packages,
                 f.getTermsText() != null && !f.getTermsText().isBlank(), f.getPrivacyText() != null && !f.getPrivacyText().isBlank(),
+                f.getRefundText() != null && !f.getRefundText().isBlank(),
                 f.getHeroImageUrl(), f.getPageHeading(), f.getPageNote(), f.getCtaLabel(), booking.combo(f), f.getPassSupportLine());
     }
 
@@ -179,12 +180,24 @@ public class RegistrationService {
     @Transactional(readOnly = true)
     public LegalDto legal(String slug, String kind) {
         RegistrationForm f = formRepository.findBySlug(slug).orElseThrow(() -> AppException.notFound("Registration link"));
-        String text = "privacy".equals(kind) ? f.getPrivacyText() : "terms".equals(kind) ? f.getTermsText() : null;
+        String text = switch (kind == null ? "" : kind) {
+            case "terms" -> f.getTermsText();
+            case "privacy" -> f.getPrivacyText();
+            case "refund" -> f.getRefundText();
+            default -> null;
+        };
         if (text == null || text.isBlank()) {
             throw AppException.notFound("Page");
         }
-        String business = partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(null);
-        return new LegalDto(f.getTitle(), business, "privacy".equals(kind) ? "Privacy Policy" : "Terms & Conditions", text);
+        // The seller named on the invoices (e.g. the company running the programme), else the partner's business.
+        String business = f.getInvoiceName() != null ? f.getInvoiceName()
+                : partnerRepository.findById(f.getPartnerId()).map(Partner::getBusinessName).orElse(null);
+        String title = switch (kind) {
+            case "privacy" -> "Privacy Policy";
+            case "refund" -> "Refund Policy";
+            default -> "Terms & Conditions";
+        };
+        return new LegalDto(f.getTitle(), business, title, text);
     }
 
     /**

@@ -127,7 +127,7 @@ function PackageEditor({ p, index, count, onChange, onRemove, onMove, errors }) 
 }
 
 /** Packages of a booking link, plus its Terms & Privacy texts. All stored in the database. */
-export default function PackagesCard({ value, onChange, termsText, privacyText, onLegal, errors = {} }) {
+export default function PackagesCard({ value, onChange, termsText, privacyText, refundText, onLegal, errors = {} }) {
   const list = value || [];
   const update = (i, p) => onChange(list.map((x, j) => (j === i ? p : x)));
   const move = (i, d) => {
@@ -153,6 +153,7 @@ export default function PackagesCard({ value, onChange, termsText, privacyText, 
         <Textarea label="Terms & Conditions" rows={6} maxLength={50000} value={termsText} onChange={(e) => onLegal({ termsText: e.target.value })}
                   hint="Opens on its own page from the booking form." />
         <Textarea label="Privacy Policy" rows={6} maxLength={50000} value={privacyText} onChange={(e) => onLegal({ privacyText: e.target.value })} />
+        <Textarea label="Refund Policy" rows={6} maxLength={50000} value={refundText} onChange={(e) => onLegal({ refundText: e.target.value })} />
       </div>
     </Card>
   );

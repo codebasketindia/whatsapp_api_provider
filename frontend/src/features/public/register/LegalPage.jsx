@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import * as regApi from '../../../api/endpoints/registrations';
 import { Spinner } from '../../../components/ui';
 
-/** PR5: Terms & Conditions / Privacy Policy of a booking link, each on its own page. */
+/** PR5: Terms & Conditions / Privacy Policy / Refund Policy of a booking link, each on its own page. */
 export default function LegalPage() {
   const { slug, kind } = useParams();
   const q = useQuery({ queryKey: ['public', 'legal', slug, kind], queryFn: () => regApi.getLegal(slug, kind), retry: false });
@@ -20,6 +20,11 @@ export default function LegalPage() {
             <h1 className="mt-1 text-2xl font-extrabold text-[#1e2a44]">{q.data.title}</h1>
             <p className="text-sm text-gray-500">{q.data.formTitle}</p>
             <div className="mt-5 whitespace-pre-line text-[15px] leading-relaxed">{q.data.text}</div>
+            <nav aria-label="Policies" className="mt-8 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#ece3cf] pt-4 text-sm font-semibold">
+              {[['terms', 'Terms & Conditions'], ['privacy', 'Privacy Policy'], ['refund', 'Refund Policy']].filter(([k]) => k !== kind).map(([k, label]) => (
+                <Link key={k} to={`/r/${slug}/${k}`} className="text-[#0b4d2c] underline decoration-[#c9a24b] underline-offset-2">{label}</Link>
+              ))}
+            </nav>
           </>
         )}
       </article>

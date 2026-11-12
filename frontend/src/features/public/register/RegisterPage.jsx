@@ -68,7 +68,25 @@ const img = (u) => {
 const subBanner = (u) => (u && u.includes('banner-special-offer') ? u.replace('banner-special-offer', 'banner-hajj-2027') : u);
 
 /** Green lattice frame around an ivory panel with a gold border, as in the HFHU artwork. */
-function Shell({ children, banner, footer = true, supportLine }) {
+/** Terms, Privacy and Refund pages of the link, at the very bottom of every booking screen. */
+function LegalLinks({ slug, f }) {
+  if (!slug || !f) return null;
+  const pages = [['terms', 'Terms & Conditions', f.hasTerms], ['privacy', 'Privacy Policy', f.hasPrivacy], ['refund', 'Refund Policy', f.hasRefund]]
+    .filter((x) => x[2]);
+  if (!pages.length) return null;
+  return (
+    <nav aria-label="Policies" className="hf-serif mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-[13.5px] font-bold text-[#0b3d23]">
+      {pages.map(([kind, label], i) => (
+        <span key={kind} className="inline-flex items-center gap-2">
+          {i > 0 && <span className="h-1.5 w-1.5 rotate-45 bg-[#c9a24b]" aria-hidden />}
+          <Link to={`/r/${slug}/${kind}`} className="underline decoration-[#c9a24b] underline-offset-2">{label}</Link>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+function Shell({ children, banner, footer = true, supportLine, legal }) {
   return (
     <div className="hf-frame min-h-screen px-1.5 py-1.5 sm:px-4 sm:py-4">
       <style>{STYLES}</style>
@@ -81,6 +99,7 @@ function Shell({ children, banner, footer = true, supportLine }) {
             {supportLine && <p className="mt-1 break-words font-bold text-[#0b4d2c]">{supportLine.replace(/\s*:\s*/, ': ')}</p>}
           </div>
         )}
+        {legal}
       </div>
     </div>
   );
@@ -519,7 +538,7 @@ export default function RegisterPage() {
   if (done) {
     const single = done.passUrl && !done.booking;
     return (
-      <Shell banner={subBanner(f.heroImageUrl)} supportLine={f.supportLine}>
+      <Shell banner={subBanner(f.heroImageUrl)} supportLine={f.supportLine} legal={<LegalLinks slug={slug} f={f} />}>
         <section className="hf-box bk-up hf-serif mx-3 mt-3 rounded-3xl px-4 pb-5 pt-4 text-center sm:mx-4">
           <span className="hf-pop mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-full border-4 border-[#d9b347] bg-gradient-to-b from-[#16804a] to-[#0a4a2b] shadow-lg">
             <Check className="h-10 w-10 text-white" strokeWidth={3.5} aria-hidden />
@@ -557,7 +576,7 @@ export default function RegisterPage() {
 
   const legalLink = (kind, label) => <Link to={`/r/${slug}/${kind}`} target="_blank" className="font-semibold text-[#0b4d2c] underline decoration-[#c9a24b] underline-offset-2">{label}</Link>;
   const comboOn = comboApplies(packages, sel, combo);
-  const legal = (kind, label) => (f[kind === 'terms' ? 'hasTerms' : 'hasPrivacy'] ? legalLink(kind, label) : label);
+  const legal = (kind, label) => (f[{ terms: 'hasTerms', privacy: 'hasPrivacy', refund: 'hasRefund' }[kind]] ? legalLink(kind, label) : label);
   return (
     <Shell banner={f.heroImageUrl} footer={false}>
       <Hero f={f} onFullDetails={cards.length ? () => setInfo(cards[0]) : null} />
@@ -587,9 +606,9 @@ export default function RegisterPage() {
           </>
         )}
         <div className="hf-serif pt-1 text-center text-[14px] font-bold text-[#0b3d23]">
-          <Ornament className="mx-auto max-w-xs">
-            {f.hasTerms ? <Link to={`/r/${slug}/terms`} target="_blank" className="px-1 underline decoration-[#c9a24b] underline-offset-2">T&amp;C Apply</Link> : <span className="px-1">T&amp;C Apply</span>}
-          </Ornament>
+          <Ornament className="mx-auto max-w-xs"><span className="px-1">T&amp;C Apply</span></Ornament>
+          <LegalLinks slug={slug} f={f} />
+          {f.supportLine && <p className="mt-1 break-words text-[13px]">{f.supportLine.replace(/\s*:\s*/, ': ')}</p>}
         </div>
       </div>
 
@@ -643,7 +662,7 @@ export default function RegisterPage() {
                   <Controller name="consent" control={control} render={({ field }) => (
                     <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} error={formState.errors.consent?.message}
                               label={<span className="hf-serif text-[15px] font-normal text-[#1f2937]">{f.consentText}
-                                {(f.hasTerms || f.hasPrivacy) && <span className="mt-1 block">Main {legal('terms', 'Terms & Conditions')} aur {legal('privacy', 'Privacy Policy')} sweekar karta/karti hoon.</span>}</span>} />
+                                {(f.hasTerms || f.hasPrivacy || f.hasRefund) && <span className="mt-1 block">Main {legal('terms', 'Terms & Conditions')}, {legal('privacy', 'Privacy Policy')} aur {legal('refund', 'Refund Policy')} sweekar karta/karti hoon.</span>}</span>} />
                   )} />
                   <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
                   {addOnNote && <Alert variant="info" title={addOnNote} />}
@@ -656,6 +675,7 @@ export default function RegisterPage() {
                 <div className="mt-4 text-center text-[14px] text-[#374151]">
                   <Ornament><span className="px-1">Secure payment • Razorpay</span></Ornament>
                   {f.supportLine && <p className="mt-1 break-words font-bold text-[#0b3d23]">{f.supportLine.replace(/\s*:\s*/, ': ')}</p>}
+                  <LegalLinks slug={slug} f={f} />
                 </div>
               </section>
             </Shell>
