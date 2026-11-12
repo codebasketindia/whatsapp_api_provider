@@ -57,7 +57,13 @@ const STYLES = `
   @media (prefers-reduced-motion: reduce) { .bk-up, .bk-sheet, .hf-pop { animation: none } .bk-tap { transition: none } }
 `;
 
-const img = (u) => (u && u.startsWith('/api/') ? regApi.publicUrl(u) : u);
+// Built-in /ziyarat/ pictures carry a version, so phones that cached an old reply for the same address load the new picture.
+const ASSET_VERSION = '2026-11-12';
+const img = (u) => {
+  if (!u) return u;
+  if (u.startsWith('/api/')) return regApi.publicUrl(u);
+  return u.startsWith('/ziyarat/') && !u.includes('?') ? `${u}?v=${ASSET_VERSION}` : u;
+};
 /** The register form and confirmation use the plain "HAJJ 2027" banner of the same artwork. */
 const subBanner = (u) => (u && u.includes('banner-special-offer') ? u.replace('banner-special-offer', 'banner-hajj-2027') : u);
 
@@ -224,10 +230,10 @@ function Description({ text }) {
 /** Large picture for Full Details: the wide version of a built-in /ziyarat/ picture when there is one, else the card picture. */
 function DetailsImage({ url }) {
   const wide = /^\/ziyarat\/[\w-]+\.jpg$/.test(url) ? url.replace(/\.jpg$/, '-wide.jpg') : null;
-  const [src, setSrc] = useState(wide || img(url));
+  const [src, setSrc] = useState(wide ? img(wide) : img(url));
   return (
     <img src={src} alt="" onError={() => src !== img(url) && setSrc(img(url))}
-         className={`mb-3 w-full rounded-2xl object-cover ${src === wide ? 'aspect-[3.6/1] sm:aspect-[4/1]' : 'aspect-[16/9]'}`} />
+         className={`mb-3 w-full rounded-2xl object-cover ${wide && src === img(wide) ? 'aspect-[3.6/1] sm:aspect-[4/1]' : 'aspect-[16/9]'}`} />
   );
 }
 
