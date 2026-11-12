@@ -221,6 +221,16 @@ function Description({ text }) {
   );
 }
 
+/** Large picture for Full Details: the wide version of a built-in /ziyarat/ picture when there is one, else the card picture. */
+function DetailsImage({ url }) {
+  const wide = /^\/ziyarat\/[\w-]+\.jpg$/.test(url) ? url.replace(/\.jpg$/, '-wide.jpg') : null;
+  const [src, setSrc] = useState(wide || img(url));
+  return (
+    <img src={src} alt="" onError={() => src !== img(url) && setSrc(img(url))}
+         className={`mb-3 w-full rounded-2xl object-cover ${src === wide ? 'aspect-[3.6/1] sm:aspect-[4/1]' : 'aspect-[16/9]'}`} />
+  );
+}
+
 /** Stops grouped by round / day, in order. */
 function groupRounds(stops) {
   const out = [];
@@ -270,7 +280,7 @@ function FullDetails({ packages, startId, onClose }) {
           })}
         </div>
         <div ref={panelRef} className="min-h-0 flex-1 overflow-y-auto p-4" role="tabpanel">
-          {p.imageUrl && <img src={img(p.imageUrl)} alt="" className="mb-3 aspect-[16/9] w-full rounded-2xl object-cover" />}
+          {p.imageUrl && <DetailsImage url={p.imageUrl} key={p.id} />}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="break-words text-xl font-extrabold text-[#0b4d2c]">{p.name}</h3>
