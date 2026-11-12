@@ -218,7 +218,17 @@ function Hero({ f, onFullDetails }) {
 
 function PriceBlock({ p }) {
   const free = Number(p.salePrice) === 0;
-  if (free) return <span className="hf-serif rounded-lg bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-2 py-1 text-[15px] font-extrabold tracking-wide text-white shadow min-[400px]:px-3 min-[400px]:text-[17px] sm:px-5 sm:text-[24px]">FREE</span>;
+  const freeTag = <span className="hf-serif rounded-lg bg-gradient-to-b from-[#16804a] to-[#0a4a2b] px-2 py-1 text-[15px] font-extrabold tracking-wide text-white shadow min-[400px]:px-3 min-[400px]:text-[17px] sm:px-5 sm:text-[24px]">FREE</span>;
+  if (free) {
+    // Display only: a free pass with an MRP shows the MRP struck through above FREE.
+    if (!(Number(p.mrp) > 0)) return freeTag;
+    return (
+      <span className="hf-serif flex flex-col items-center gap-0.5">
+        <span className="bk-strike text-[12px] font-bold text-[#5b4a2a] sm:text-[16px]">{rupees(p.mrp)}</span>
+        {freeTag}
+      </span>
+    );
+  }
   return (
     <span className="hf-serif flex flex-col items-center gap-0.5">
       <span className="rounded-md bg-[#f4e3ad] px-1.5 text-[10px] font-bold text-[#5c4510] sm:text-[13px]">PAID</span>
